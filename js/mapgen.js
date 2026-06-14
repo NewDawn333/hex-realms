@@ -29,7 +29,7 @@ const MapGen = {
         });
       }
       MapGen.applyStart(game);
-      MapGen.addRidges(game, rng);
+      MapGen.addRidges(game, rng, sizeCfg.mountains || 110);
       MapGen.sprinkleTrees(game, rng);
       return;
     }
@@ -155,9 +155,9 @@ const MapGen = {
 
   // mountain ridges: impassable walls that create chokepoints,
   // rejected if they would split the passable map in two
-  addRidges(game, rng) {
+  addRidges(game, rng, mountainDivisor = 110) {
     const tiles = [...game.tiles.values()];
-    const ridgeCount = Math.max(1, Math.round(tiles.length / 110));
+    const ridgeCount = Math.max(2, Math.round(tiles.length / mountainDivisor));
     for (let i = 0; i < ridgeCount; i++) {
       for (let attempt = 0; attempt < 10; attempt++) {
         const t0 = tiles[(rng() * tiles.length) | 0];

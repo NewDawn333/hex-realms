@@ -7,7 +7,8 @@
 //   #  plains
 //   ^  mountain (impassable)
 //   =  sea strait / ferry crossing (ownable, passable, no income)
-//   1-6 faction capital (plains underneath)
+//   1-8 faction capital (plains underneath)
+//   T  forest (plain + tree)
 //
 // Conversion offset -> axial: q = col, r = row - (col - (col & 1)) / 2
 
@@ -134,17 +135,16 @@ const RealMaps = {
   startCount(id) {
     let n = 0;
     for (const row of this.MAPS[id].rows) {
-      for (const ch of row) if (ch >= '1' && ch <= '6') n++;
+      for (const ch of row) if (ch >= '1' && ch <= '8') n++;
     }
     return n;
   },
 
-  build(game, id) {
-    const map = this.MAPS[id];
+  buildFromRows(game, rows, factions) {
     const starts = [];
     game.tiles.clear();
 
-    map.rows.forEach((row, rowIdx) => {
+    rows.forEach((row, rowIdx) => {
       for (let col = 0; col < row.length; col++) {
         const ch = row[col];
         if (ch === '.' || ch === ' ' || ch === '~') continue;
@@ -156,7 +156,8 @@ const RealMaps = {
         };
         if (ch === '^') tile.kind = 'mountain';
         else if (ch === '=') tile.strait = true;
-        else if (ch >= '1' && ch <= '6') starts[+ch - 1] = tile;
+        else if (ch === 'T' || ch === 't') tile.tree = true;
+        else if (ch >= '1' && ch <= '8') starts[+ch - 1] = tile;
         game.tiles.set(Hex.key(q, r), tile);
       }
     });
@@ -164,19 +165,23 @@ const RealMaps = {
     starts.forEach((cap, i) => {
       const player = game.players[i];
       if (!player || !cap) return;
-      player.name = map.factions[i] || player.color.name;
+      player.name = (factions && factions[i]) || player.color.name;
       cap.owner = player.id;
       cap.kind = 'capital';
-      // claim 3 surrounding tiles, solid land first
       const ns = Hex.neighbors(cap.q, cap.r)
         .map(n => game.tiles.get(Hex.key(n.q, n.r)))
         .filter(t => t && t.kind !== 'mountain')
         .sort((a, b) => (a.strait ? 1 : 0) - (b.strait ? 1 : 0));
-      for (let j = 0; j < Math.min(3, ns.length); j++) {
-        ns[j].owner = player.id;
-      }
+      for (let j = 0; j < Math.min(3, ns.length); j++) ns[j].owner = player.id;
     });
 
-    MapGen.sprinkleTrees(game, game.rng);
+    if (!rows.some(r => r.includes('T') || r.includes('t'))) {
+      MapGen.sprinkleTrees(game, game.rng);
+    }
+  },
+
+  build(game, id) {
+    const map = this.MAPS[id];
+    this.buildFromRows(game, map.rows, map.factions);
   },
 };

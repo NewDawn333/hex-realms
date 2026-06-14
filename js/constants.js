@@ -18,8 +18,10 @@ const RULES = {
   // Income by hex kind (a hex with a tree produces 0)
   INCOME: { plain: 1, town: 3, city: 6, capital: 5, tower: 0 },
 
-  // Static defense by hex kind (towers use TOWER_DEF by level)
-  DEF: { plain: 0, town: 1, city: 2, capital: 2 },
+  // Static defense by hex kind (towers use TOWER_DEF by level).
+  // Capture needs unit level >= defense + 1 (Champion lv4 breaks bastions).
+  // Towns/cities: lv2 | Capitals & watchtowers: lv3 | Bastions: lv4
+  DEF: { plain: 0, town: 1, city: 1, capital: 2 },
   TOWER_DEF: [0, 2, 3],
 
   TREE_CHOP_GOLD: 3,
@@ -39,6 +41,8 @@ const PLAYER_COLORS = [
   { main: '#d2a33f', light: '#e8c477', dark: '#a87f2a', name: 'Gold' },
   { main: '#9268c9', light: '#b494de', dark: '#6f4aa3', name: 'Purple' },
   { main: '#d2699f', light: '#e895bf', dark: '#a84a7b', name: 'Pink' },
+  { main: '#4aabb8', light: '#7eced8', dark: '#358792', name: 'Teal' },
+  { main: '#c97a4a', light: '#e0a078', dark: '#9a5c32', name: 'Orange' },
 ];
 
 const NEUTRAL_COLOR = { main: '#b9b29b', light: '#cdc7b4', dark: '#9a937d' };
@@ -46,8 +50,9 @@ const MOUNTAIN_COLOR = { main: '#7d756e', light: '#958d84', dark: '#5d564f' };
 const STRAIT_COLOR = { main: '#2e6088', light: '#3d7aa8', dark: '#224a6a' };
 
 const MAP_SIZES = {
-  small:  { land: 150, radius: 12 },
-  medium: { land: 280, radius: 16 },
-  large:  { land: 450, radius: 21 },
-  huge:   { land: 650, radius: 26 },
+  small:    { land: 150, radius: 12, mountains: 110 },
+  medium:   { land: 280, radius: 16, mountains: 75 },
+  large:    { land: 450, radius: 21, mountains: 55 },
+  huge:     { land: 650, radius: 26, mountains: 42 },
+  gigantic: { land: 950, radius: 32, mountains: 32 },
 };

@@ -28,8 +28,11 @@ class Game {
     this.seed = seed;
     this.rng = makeRng(seed);
 
-    const scenario = opts.map && opts.map !== 'random';
-    const total = scenario ? RealMaps.startCount(opts.map) : 1 + opts.aiCount;
+    const scenario = opts.map && opts.map !== 'random' && !(opts.map && opts.map.startsWith('custom:'));
+    const customId = opts.map && opts.map.startsWith('custom:') ? opts.map.slice(7) : null;
+    const total = scenario ? RealMaps.startCount(opts.map)
+      : customId ? CustomMaps.startCount(customId)
+      : 1 + opts.aiCount;
     for (let i = 1; i <= total; i++) {
       this.players.push({
         id: i, color: PLAYER_COLORS[i - 1], name: PLAYER_COLORS[i - 1].name,
@@ -38,6 +41,7 @@ class Game {
     }
 
     if (scenario) RealMaps.build(this, opts.map);
+    else if (opts.map && opts.map.startsWith('custom:')) CustomMaps.build(this, opts.map.slice(7));
     else MapGen.generate(this, MAP_SIZES[opts.size] || MAP_SIZES.medium);
 
     this.provinces = new Map();  // id -> province
@@ -255,13 +259,15 @@ class Game {
     return res;
   }
 
-  moveUnit(fromKey, toKey) {
+  moveUnit(fromKey, toKey, opts = {}) {
+    const skipUndo = opts.skipUndo === true;
+    const skipRecord = opts.skipRecord === true;
     const legal = this.legalMoves(fromKey);
     const isMove = legal.moves.has(toKey);
     const isAttack = legal.attacks.has(toKey);
     if (!isMove && !isAttack) return false;
 
-    this.pushUndo();
+    if (!skipUndo) this.pushUndo();
     const from = this.tiles.get(fromKey);
     const to = this.tiles.get(toKey);
     const unit = from.unit;
@@ -295,8 +301,56 @@ class Game {
       this.recomputeProvinces();
     }
     this.refreshProvinceStats();
-    this.recordStep();
+    if (!skipRecord) this.recordStep();
     return true;
+  }
+
+  // Move each unmoved unit one full step toward target (best legal move by distance).
+  rallyToward(playerId, targetKey) {
+    const targetTile = this.tiles.get(targetKey);
+    if (!targetTile || targetTile.owner !== playerId || this.winner) return false;
+    const target = Hex.fromKey(targetKey);
+
+    const units = [];
+    for (const [k, t] of this.tiles) {
+      if (t.owner === playerId && t.unit && !t.unit.moved) units.push(k);
+    }
+    if (!units.length) return false;
+
+    this.pushUndo();
+    units.sort((a, b) => {
+      const ha = Hex.fromKey(a), hb = Hex.fromKey(b);
+      return Hex.dist(hb.q, hb.r, target.q, target.r) - Hex.dist(ha.q, ha.r, target.q, target.r);
+    });
+
+    let acted = false;
+    for (const fromKey of units) {
+      const from = this.tiles.get(fromKey);
+      if (!from?.unit || from.unit.moved) continue;
+      const dest = this._bestMoveToward(fromKey, targetKey);
+      if (dest && this.moveUnit(fromKey, dest, { skipUndo: true, skipRecord: true })) acted = true;
+    }
+    if (acted) {
+      this.recordStep('Rally');
+      this.emit('rally', { target: targetKey });
+    } else {
+      this.undoStack.pop();
+    }
+    return acted;
+  }
+
+  _bestMoveToward(fromKey, targetKey) {
+    const target = Hex.fromKey(targetKey);
+    const lm = this.legalMoves(fromKey);
+    let best = null, bestD = Infinity;
+    const consider = (k) => {
+      const h = Hex.fromKey(k);
+      const d = Hex.dist(h.q, h.r, target.q, target.r);
+      if (d < bestD) { bestD = d; best = k; }
+    };
+    for (const k of lm.moves) consider(k);
+    for (const k of lm.attacks.keys()) consider(k);
+    return best;
   }
 
   // ---------- economy / build ----------

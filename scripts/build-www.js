@@ -26,6 +26,8 @@ const COPY = [
   'js/main.js',
   'js/haptics.js',
   'js/save.js',
+  'js/custommaps.js',
+  'js/mapeditor.js',
 ];
 
 function rm(dir) {

@@ -42,10 +42,10 @@
       <button id="btn-u2" class="build-btn" title="Spearman — beats militia">
         <canvas width="48" height="48"></canvas><span class="cost">8</span>
       </button>
-      <button id="btn-u3" class="build-btn" title="Knight — beats spearmen &amp; most defenses">
+      <button id="btn-u3" class="build-btn" title="Knight — beats spearmen &amp; watchtowers (lv3)">
         <canvas width="48" height="48"></canvas><span class="cost">18</span>
       </button>
-      <button id="btn-u4" class="build-btn" title="Champion — breaks any siege">
+      <button id="btn-u4" class="build-btn" title="Champion — breaks bastions &amp; any siege">
         <canvas width="48" height="48"></canvas><span class="cost">33</span>
       </button>
       <span class="divider"></span>
@@ -55,7 +55,7 @@
       <button id="btn-tower" class="build-btn" title="Watchtower — defends surrounding tiles">
         <canvas width="48" height="48"></canvas><span class="cost">15</span>
       </button>
-      <button id="btn-upgrade" class="build-btn" title="Upgrade town → city, or tower → bastion">
+      <button id="btn-upgrade" class="build-btn" title="Upgrade town → city, or watchtower → bastion (needs Champion)">
         <canvas width="48" height="48"></canvas><span class="cost">10</span>
       </button>
       <span class="divider"></span>
@@ -85,6 +85,7 @@
           <option value="medium" selected>Medium</option>
           <option value="large">Large</option>
           <option value="huge">Huge</option>
+          <option value="gigantic">Gigantic</option>
         </select>
       </div>
       <p id="map-note" class="map-note hidden">Factions and start positions are set by the map.</p>
@@ -96,6 +97,8 @@
           <option value="3">3</option>
           <option value="4">4</option>
           <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
         </select>
       </div>
       <div class="opt-row">
@@ -108,6 +111,7 @@
       </div>
       <button id="btn-resume" class="text-btn primary big hidden">Resume Game</button>
       <button id="btn-start" class="text-btn primary big">Start Game</button>
+      <button id="btn-editor-menu" class="text-btn big">Map Editor</button>
       <details class="howto">
         <summary>How to play</summary>
         <ul>
@@ -119,8 +123,56 @@
           <li>Towns and cities boost income. Chop trees for quick gold before they spread.</li>
           <li>Mountains are impassable. Blue strait hexes are sea crossings — armies can ferry over them.</li>
           <li>Cut an enemy province in two to cripple it. Take every capital to win.</li>
+          <li><b>Hold</b> on one of your hexes to rally all unmoved units toward it.</li>
         </ul>
       </details>
+    </div>
+  </div>
+
+  <!-- map editor menu -->
+  <div id="editor-menu-overlay" class="overlay hidden">
+    <div class="panel">
+      <h2>Map Editor</h2>
+      <p class="tagline">Create custom scenarios saved on this device.</p>
+      <button id="editor-new-blank" class="text-btn primary big">Blank Map</button>
+      <button id="editor-new-full" class="text-btn big">Full Hex Grid</button>
+      <div id="editor-saved-list" class="editor-saved-list"></div>
+      <button id="editor-menu-back" class="text-btn">Back to Menu</button>
+    </div>
+  </div>
+
+  <!-- map editor toolbar -->
+  <div id="editor-bar" class="hidden">
+    <div class="editor-tools">
+      <button id="ed-land" class="text-btn ed-tool active" data-tool="land">Land</button>
+      <button id="ed-erase" class="text-btn ed-tool" data-tool="erase">Erase</button>
+      <button id="ed-mountain" class="text-btn ed-tool" data-tool="mountain">Mountain</button>
+      <button id="ed-forest" class="text-btn ed-tool" data-tool="forest">Forest</button>
+      <button id="ed-start1" class="text-btn ed-tool" data-tool="start1">S1</button>
+      <button id="ed-start2" class="text-btn ed-tool" data-tool="start2">S2</button>
+      <button id="ed-start3" class="text-btn ed-tool" data-tool="start3">S3</button>
+      <button id="ed-start4" class="text-btn ed-tool" data-tool="start4">S4</button>
+      <button id="ed-start5" class="text-btn ed-tool" data-tool="start5">S5</button>
+      <button id="ed-start6" class="text-btn ed-tool" data-tool="start6">S6</button>
+      <button id="ed-start7" class="text-btn ed-tool" data-tool="start7">S7</button>
+      <button id="ed-start8" class="text-btn ed-tool" data-tool="start8">S8</button>
+      <span class="divider"></span>
+      <button id="editor-save-btn" class="text-btn primary">Save</button>
+      <button id="editor-exit-btn" class="text-btn">Exit</button>
+    </div>
+  </div>
+
+  <!-- map editor save dialog -->
+  <div id="editor-save-panel" class="overlay hidden">
+    <div class="panel">
+      <h2>Save Map</h2>
+      <div class="opt-row">
+        <label for="editor-map-name">Name</label>
+        <input id="editor-map-name" type="text" maxlength="40" placeholder="My Custom Map">
+      </div>
+      <button id="editor-save-confirm" class="text-btn primary big">Save</button>
+      <button id="editor-save-cancel" class="text-btn big">Cancel</button>
+      <button id="editor-delete-map" class="text-btn big hidden">Delete Map</button>
     </div>
   </div>
 
@@ -166,11 +218,13 @@
   <script src="js/audio.js"></script>
   <script src="js/mapgen.js"></script>
   <script src="js/realmaps.js"></script>
+  <script src="js/custommaps.js"></script>
   <script src="js/game.js"></script>
   <script src="js/renderer.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/haptics.js"></script>
   <script src="js/save.js"></script>
+  <script src="js/mapeditor.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

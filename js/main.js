@@ -207,6 +207,19 @@ function saveAndExit() {
 }
 
 function handleBackButton() {
+  if (MapEditor.active) {
+    MapEditor.close();
+    return;
+  }
+  if (!isHidden('editor-menu-overlay')) {
+    hideEl('editor-menu-overlay');
+    showEl('menu-overlay');
+    return;
+  }
+  if (!isHidden('editor-save-panel')) {
+    hideEl('editor-save-panel');
+    return;
+  }
   if (replay.active) {
     exitReplay();
     return;
@@ -697,66 +710,120 @@ function updateHud() {
 }
 
 // ============================================================
-//  Input: pointer pan/zoom/tap
+//  Input: pointer pan/zoom/tap/hold
 // ============================================================
 const pointers = new Map();
 let panStart = null;
 let pinchStart = null;
 let moved = false;
+let holdTimer = null;
+const HOLD_MS = 480;
+
+function activeCam() {
+  if (MapEditor.active) return MapEditor.cam;
+  if (renderer) return renderer.cam;
+  return { x: 0, y: 0, scale: 1 };
+}
+
+function activeRendererRef() {
+  if (MapEditor.active) return MapEditor.previewRenderer;
+  return renderer;
+}
+
+function hexAtPointer(e) {
+  const r = activeRendererRef();
+  if (!r) return null;
+  const rect = canvas.getBoundingClientRect();
+  return r.hexAtScreen(e.clientX - rect.left, e.clientY - rect.top);
+}
+
+function onHold(e) {
+  if (MapEditor.active || replay.active || !humanCanAct() || !game) return;
+  moved = true;
+  const key = hexAtPointer(e);
+  const t = game.tiles.get(key);
+  if (t && t.owner === HUMAN && game.rallyToward(HUMAN, key)) {
+    reselectProvince();
+    afterAction();
+    Audio2.select();
+    HapticsUtil.turn();
+  }
+}
 
 canvas.addEventListener('pointerdown', (e) => {
   try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* synthetic events */ }
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   moved = false;
+  const cam = activeCam();
+  const r = activeRendererRef();
   if (pointers.size === 1) {
-    panStart = { x: e.clientX, y: e.clientY, camX: renderer.cam.x, camY: renderer.cam.y };
-  } else if (pointers.size === 2) {
+    panStart = { x: e.clientX, y: e.clientY, camX: cam.x, camY: cam.y };
+    clearTimeout(holdTimer);
+    if (!MapEditor.active) {
+      holdTimer = setTimeout(() => {
+        if (!moved && pointers.size >= 1) onHold(e);
+      }, HOLD_MS);
+    }
+  } else if (pointers.size === 2 && r) {
     const [a, b] = [...pointers.values()];
     pinchStart = {
       dist: Math.hypot(a.x - b.x, a.y - b.y),
-      scale: renderer.cam.scale,
+      scale: cam.scale,
       mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
-      world: renderer.screenToWorld((a.x + b.x) / 2, (a.y + b.y) / 2),
+      world: r.screenToWorld((a.x + b.x) / 2, (a.y + b.y) / 2),
     };
     panStart = null;
+    clearTimeout(holdTimer);
   }
 });
 
 canvas.addEventListener('pointermove', (e) => {
   if (!pointers.has(e.pointerId)) return;
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const cam = activeCam();
+  const r = activeRendererRef();
+  if (!r) return;
 
   if (pointers.size === 2 && pinchStart) {
     const [a, b] = [...pointers.values()];
     const dist = Math.hypot(a.x - b.x, a.y - b.y);
     const scale = Math.min(3, Math.max(0.25, pinchStart.scale * dist / pinchStart.dist));
-    renderer.cam.scale = scale;
-    // keep pinch midpoint anchored
+    cam.scale = scale;
     const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    renderer.cam.x = pinchStart.world.x - (mid.x - canvas.clientWidth / 2) / scale;
-    renderer.cam.y = pinchStart.world.y - (mid.y - canvas.clientHeight / 2) / scale;
+    cam.x = pinchStart.world.x - (mid.x - canvas.clientWidth / 2) / scale;
+    cam.y = pinchStart.world.y - (mid.y - canvas.clientHeight / 2) / scale;
     moved = true;
+    clearTimeout(holdTimer);
   } else if (panStart) {
     const dx = e.clientX - panStart.x, dy = e.clientY - panStart.y;
-    if (Math.hypot(dx, dy) > 6) moved = true;
+    if (Math.hypot(dx, dy) > 6) {
+      moved = true;
+      clearTimeout(holdTimer);
+    }
     if (moved) {
-      renderer.cam.x = panStart.camX - dx / renderer.cam.scale;
-      renderer.cam.y = panStart.camY - dy / renderer.cam.scale;
+      cam.x = panStart.camX - dx / cam.scale;
+      cam.y = panStart.camY - dy / cam.scale;
     }
   }
 });
 
 function pointerEnd(e) {
+  clearTimeout(holdTimer);
   if (pointers.has(e.pointerId)) {
     pointers.delete(e.pointerId);
-    if (!moved && pointers.size === 0 && game) {
-      const rect = canvas.getBoundingClientRect();
-      onTap(renderer.hexAtScreen(e.clientX - rect.left, e.clientY - rect.top));
+    if (!moved && pointers.size === 0) {
+      const key = hexAtPointer(e);
+      if (MapEditor.active) {
+        if (key) MapEditor.applyTool(key);
+      } else if (game && key) {
+        onTap(key);
+      }
     }
     if (pointers.size < 2) pinchStart = null;
     if (pointers.size === 1) {
+      const cam = activeCam();
       const [a] = [...pointers.values()];
-      panStart = { x: a.x, y: a.y, camX: renderer.cam.x, camY: renderer.cam.y };
+      panStart = { x: a.x, y: a.y, camX: cam.x, camY: cam.y };
     } else {
       panStart = null;
     }
@@ -767,15 +834,16 @@ canvas.addEventListener('pointercancel', pointerEnd);
 
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
-  if (!renderer) return;
+  const r = activeRendererRef();
+  if (!r) return;
+  const cam = activeCam();
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  const before = renderer.screenToWorld(mx, my);
-  renderer.cam.scale = Math.min(3, Math.max(0.25,
-    renderer.cam.scale * (e.deltaY < 0 ? 1.1 : 0.9)));
-  const after = renderer.screenToWorld(mx, my);
-  renderer.cam.x += before.x - after.x;
-  renderer.cam.y += before.y - after.y;
+  const before = r.screenToWorld(mx, my);
+  cam.scale = Math.min(3, Math.max(0.25, cam.scale * (e.deltaY < 0 ? 1.1 : 0.9)));
+  const after = r.screenToWorld(mx, my);
+  cam.x += before.x - after.x;
+  cam.y += before.y - after.y;
 }, { passive: false });
 
 window.addEventListener('keydown', (e) => {
@@ -855,15 +923,68 @@ if (replaySpeed) {
 
 const optMap = $('opt-map');
 if (optMap) {
-  optMap.onchange = () => {
-    const real = optMap.value !== 'random';
-    const rowSize = $('row-size');
-    const rowAi = $('row-ai');
-    const mapNote = $('map-note');
-    if (rowSize) rowSize.classList.toggle('hidden', real);
-    if (rowAi) rowAi.classList.toggle('hidden', real);
-    if (mapNote) mapNote.classList.toggle('hidden', !real);
-  };
+  optMap.onchange = refreshMapOptions;
+}
+
+function showEditorMenu() {
+  hideEl('menu-overlay');
+  showEl('editor-menu-overlay');
+  renderEditorSavedList();
+}
+
+function renderEditorSavedList() {
+  const list = $('editor-saved-list');
+  if (!list) return;
+  list.innerHTML = '';
+  const maps = CustomMaps.list();
+  if (!maps.length) {
+    list.innerHTML = '<p class="tagline">No saved custom maps yet.</p>';
+    return;
+  }
+  for (const m of maps) {
+    const row = document.createElement('div');
+    row.className = 'editor-saved-row';
+    const name = document.createElement('span');
+    name.textContent = m.name;
+    const editBtn = document.createElement('button');
+    editBtn.className = 'text-btn';
+    editBtn.textContent = 'Edit';
+    editBtn.onclick = () => {
+      hideEl('editor-menu-overlay');
+      MapEditor.open('blank', m.id);
+    };
+    const delBtn = document.createElement('button');
+    delBtn.className = 'text-btn';
+    delBtn.textContent = 'Delete';
+    delBtn.onclick = () => {
+      if (confirm('Delete "' + m.name + '" permanently?')) {
+        CustomMaps.delete(m.id);
+        populateCustomMaps();
+        renderEditorSavedList();
+      }
+    };
+    row.appendChild(name);
+    row.appendChild(editBtn);
+    row.appendChild(delBtn);
+    list.appendChild(row);
+  }
+}
+
+bindClick('btn-editor-menu', showEditorMenu);
+bindClick('editor-new-blank', () => { hideEl('editor-menu-overlay'); MapEditor.open('blank'); });
+bindClick('editor-new-full', () => { hideEl('editor-menu-overlay'); MapEditor.open('full'); });
+bindClick('editor-menu-back', () => { hideEl('editor-menu-overlay'); showEl('menu-overlay'); });
+bindClick('editor-save-btn', () => {
+  const del = $('editor-delete-map');
+  if (del) del.classList.toggle('hidden', !MapEditor.editId);
+  MapEditor.promptSave();
+});
+bindClick('editor-exit-btn', () => MapEditor.close());
+bindClick('editor-save-confirm', () => MapEditor.saveCurrent());
+bindClick('editor-save-cancel', () => hideEl('editor-save-panel'));
+bindClick('editor-delete-map', () => MapEditor.deleteCurrent());
+for (const btn of document.querySelectorAll('.ed-tool')) {
+  btn.addEventListener('click', () => MapEditor.setTool(btn.dataset.tool));
 }
 
 bindClick('btn-music', () => {
@@ -920,6 +1041,7 @@ function setupNativeLifecycle() {
 
 function boot() {
   try { paintButtonIcons(); } catch (err) { console.error('paintButtonIcons failed', err); }
+  populateCustomMaps();
   updateMainMenu();
   showMenu();
   requestAnimationFrame(loop);
@@ -931,7 +1053,9 @@ function boot() {
 //  Boot
 // ============================================================
 function loop(now) {
-  if (renderer && game) {
+  if (MapEditor.active) {
+    MapEditor.draw(now);
+  } else if (renderer && game) {
     drainEvents();
     renderer.draw(now);
   }

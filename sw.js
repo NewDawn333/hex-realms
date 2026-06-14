@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE = 'hex-realms-v5';
+const CACHE = 'hex-realms-v6';
 const ASSETS = [
   '.',
   'index.html',
@@ -13,11 +13,13 @@ const ASSETS = [
   'js/audio.js',
   'js/mapgen.js',
   'js/realmaps.js',
+  'js/custommaps.js',
   'js/game.js',
   'js/renderer.js',
   'js/ai.js',
   'js/haptics.js',
   'js/save.js',
+  'js/mapeditor.js',
   'js/main.js',
 ];
 
