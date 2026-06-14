@@ -19,24 +19,30 @@ then open **http://localhost:8421**.
 
 ## Play on your Android phone
 
-### Quick way (same Wi-Fi)
+### Online (recommended)
+
+The game is hosted on GitHub Pages — works anywhere you have internet, no Mac needed:
+
+**https://newdawn333.github.io/hex-realms/**
+
+1. Open that link in **Chrome** on your phone.
+2. Tap **Start Game**, pick a map, and play.
+3. Optional — install like an app: Chrome menu (⋮) → **Add to Home screen** or **Install app**. It opens fullscreen and works offline after the first load.
+
+**Controls on phone:** tap to select/build/move; drag with one finger to pan; pinch to zoom.
+
+### Same Wi-Fi (local dev)
+
+If you're testing changes before they're pushed:
 
 1. Double-click `Hex Realms.command` on your Mac (starts the server)
-2. Find your Mac's IP address: System Settings → Wi-Fi → Details,
-   or run `ipconfig getifaddr en0`
+2. Find your Mac's IP: System Settings → Wi-Fi → Details, or run `ipconfig getifaddr en0`
 3. On your phone, open Chrome and visit `http://<your-mac-ip>:8421`
    (e.g. `http://192.168.1.42:8421`)
-4. Optional: in Chrome's menu choose **"Add to Home screen"** — the game
-   installs as a fullscreen app and keeps working offline afterwards.
 
-### Polishing phase
+### Future: Play Store
 
-The game is PWA-ready (manifest + service worker + touch controls), so for
-a "real" app we can later either:
-
-- host it on any static site (GitHub Pages, Netlify) and install from there, or
-- wrap it with [Capacitor](https://capacitorjs.com) into a proper APK for
-  the Play Store.
+The game is PWA-ready. We can later wrap it with [Capacitor](https://capacitorjs.com) into a proper APK if you want it on the Play Store.
 
 ## Maps
 
