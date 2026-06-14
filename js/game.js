@@ -508,6 +508,7 @@ class Game {
     return JSON.stringify({
       tiles, turnIndex: this.turnIndex, round: this.round,
       players, winner: this.winner,
+      rngState: this.rng.getState ? this.rng.getState() : null,
     });
   }
 
@@ -539,6 +540,7 @@ class Game {
       }
     }
     this.winner = s.winner ?? null;
+    if (s.rngState != null && this.rng.setState) this.rng.setState(s.rngState);
     this.recomputeProvinces();
     this.refreshProvinceStats();
   }

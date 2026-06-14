@@ -106,6 +106,7 @@
           <option value="hard">Hard</option>
         </select>
       </div>
+      <button id="btn-resume" class="text-btn primary big hidden">Resume Game</button>
       <button id="btn-start" class="text-btn primary big">Start Game</button>
       <details class="howto">
         <summary>How to play</summary>
@@ -120,6 +121,17 @@
           <li>Cut an enemy province in two to cripple it. Take every capital to win.</li>
         </ul>
       </details>
+    </div>
+  </div>
+
+  <!-- in-game pause menu -->
+  <div id="pause-overlay" class="overlay hidden">
+    <div class="panel">
+      <h2>Paused</h2>
+      <p class="tagline">Your realm awaits.</p>
+      <button id="btn-pause-continue" class="text-btn primary big">Continue</button>
+      <button id="btn-pause-restart" class="text-btn big">Restart</button>
+      <button id="btn-pause-end" class="text-btn big">End Game</button>
     </div>
   </div>
 
@@ -158,6 +170,7 @@
   <script src="js/renderer.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/haptics.js"></script>
+  <script src="js/save.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

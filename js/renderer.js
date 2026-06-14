@@ -28,8 +28,14 @@ class Renderer {
 
   resize() {
     const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
-    this.canvas.width = w * this.dpr;
-    this.canvas.height = h * this.dpr;
+    if (w <= 0 || h <= 0) return;
+    const pw = Math.round(w * this.dpr);
+    const ph = Math.round(h * this.dpr);
+    // Resetting canvas dimensions clears the bitmap — skip if unchanged
+    // (mobile taps often trigger spurious resize from browser chrome).
+    if (this.canvas.width === pw && this.canvas.height === ph) return;
+    this.canvas.width = pw;
+    this.canvas.height = ph;
   }
 
   fitToMap() {

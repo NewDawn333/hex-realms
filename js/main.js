@@ -23,21 +23,130 @@ const sel = {
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game-canvas');
+const SaveGame = window.SaveGame || {
+  KEY: 'hex-realms-save',
+  save() {},
+  load() { return null; },
+  hasSave() { return false; },
+  clear() {},
+};
+let appReady = false;
+
+function getHexNative() {
+  return window.HexNative || {
+    isNative() {
+      return !!(window.Capacitor && window.Capacitor.isNativePlatform &&
+        window.Capacitor.isNativePlatform());
+    },
+    onBackButton() {},
+    onPause() {},
+    onResume() {},
+    exitApp() {
+      const App = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+      if (App && App.exitApp) App.exitApp();
+    },
+  };
+}
+
+function bindClick(id, fn) {
+  const el = $(id);
+  if (el) el.addEventListener('click', fn);
+}
+
+function hideEl(id) {
+  const el = $(id);
+  if (el) el.classList.add('hidden');
+}
+
+function showEl(id) {
+  const el = $(id);
+  if (el) el.classList.remove('hidden');
+}
+
+function isHidden(id) {
+  const el = $(id);
+  return !el || el.classList.contains('hidden');
+}
+
+function isMainMenuVisible() {
+  return !isHidden('menu-overlay');
+}
+
+function isPauseVisible() {
+  return !isHidden('pause-overlay');
+}
+
+function isGameOverVisible() {
+  return !isHidden('gameover-overlay');
+}
+
+function isInActiveGame() {
+  return game && !game.winner && !replay.active && !isMainMenuVisible() && !isGameOverVisible();
+}
+
+function updateMainMenu() {
+  const btn = $('btn-resume');
+  if (btn) btn.classList.toggle('hidden', !SaveGame.hasSave());
+}
+
+function autosave() {
+  if (game && !game.winner && !replay.active && !isMainMenuVisible() && !isGameOverVisible()) {
+    SaveGame.save(game, renderer);
+  }
+}
 
 // ============================================================
 //  Game lifecycle
 // ============================================================
 function newGame() {
+  try {
+    stopAITimer();
+    stopReplay();
+    SaveGame.clear();
+    hidePauseMenu();
+    const opts = {
+      map: $('opt-map').value,
+      size: $('opt-size').value,
+      aiCount: +$('opt-ai').value,
+      difficulty: $('opt-diff').value,
+    };
+    game = new Game(opts);
+    renderer = new Renderer(canvas, game);
+    clearSelection();
+    hideEl('menu-overlay');
+    hideEl('gameover-overlay');
+    showEl('hud-top');
+    showEl('hud-bottom');
+    Audio2.ensure();
+    if (Audio2.musicOn) Audio2.startMusic();
+    drainEvents();
+    updateHud();
+    autosave();
+    maybeRunAI();
+  } catch (err) {
+    console.error('newGame failed', err);
+  }
+}
+
+function resumeGame() {
+  const data = SaveGame.load();
+  if (!data) return;
   stopAITimer();
   stopReplay();
-  const opts = {
-    map: $('opt-map').value,
-    size: $('opt-size').value,
-    aiCount: +$('opt-ai').value,
-    difficulty: $('opt-diff').value,
-  };
-  game = new Game(opts);
+  hidePauseMenu();
+  $('opt-map').value = data.opts.map || 'random';
+  if (data.opts.size) $('opt-size').value = data.opts.size;
+  if (data.opts.aiCount != null) $('opt-ai').value = String(data.opts.aiCount);
+  if (data.opts.difficulty) $('opt-diff').value = data.opts.difficulty;
+  $('opt-map').dispatchEvent(new Event('change'));
+
+  game = new Game(Object.assign({}, data.opts, { seed: data.seed }));
+  game.restore(data.snapshot);
+  game.tape = [];
+  game.undoStack = [];
+  game.recording = true;
   renderer = new Renderer(canvas, game);
+  if (data.camera) Object.assign(renderer.cam, data.camera);
   clearSelection();
   $('menu-overlay').classList.add('hidden');
   $('gameover-overlay').classList.add('hidden');
@@ -50,13 +159,100 @@ function newGame() {
   maybeRunAI();
 }
 
+function restartGame() {
+  if (!game) return;
+  stopAITimer();
+  const opts = Object.assign({}, game.opts);
+  const seed = game.seed;
+  hidePauseMenu();
+  game = new Game(Object.assign({}, opts, { seed }));
+  renderer = new Renderer(canvas, game);
+  clearSelection();
+  $('hud-top').classList.remove('hidden');
+  $('hud-bottom').classList.remove('hidden');
+  drainEvents();
+  updateHud();
+  autosave();
+  maybeRunAI();
+}
+
+function showPauseMenu() {
+  if (!isInActiveGame()) return;
+  stopAITimer();
+  showEl('pause-overlay');
+  autosave();
+}
+
+function hidePauseMenu() {
+  hideEl('pause-overlay');
+}
+
+function endGameFromPause() {
+  SaveGame.clear();
+  stopAITimer();
+  hidePauseMenu();
+  game = null;
+  renderer = null;
+  clearSelection();
+  updateMainMenu();
+  showMenu();
+}
+
+function saveAndExit() {
+  autosave();
+  stopAITimer();
+  hidePauseMenu();
+  Audio2.stopAll();
+  getHexNative().exitApp();
+}
+
+function handleBackButton() {
+  if (replay.active) {
+    exitReplay();
+    return;
+  }
+  if (isGameOverVisible()) {
+    SaveGame.clear();
+    showMenu();
+    return;
+  }
+  if (isPauseVisible()) {
+    saveAndExit();
+    return;
+  }
+  if (isInActiveGame()) {
+    showPauseMenu();
+    return;
+  }
+  if (isMainMenuVisible()) {
+    Audio2.stopAll();
+    getHexNative().exitApp();
+  }
+}
+
+function onAppBackground() {
+  if (!appReady) return;
+  if (isInActiveGame() || isPauseVisible()) autosave();
+  stopAITimer();
+  Audio2.stopAll();
+}
+
+function onAppForeground() {
+  Audio2.resumeAll();
+  if (isInActiveGame() && !isPauseVisible()) maybeRunAI();
+}
+
 function showMenu() {
   stopAITimer();
   stopReplay();
-  $('menu-overlay').classList.remove('hidden');
-  $('gameover-overlay').classList.add('hidden');
-  $('hud-top').classList.add('hidden');
-  $('hud-bottom').classList.add('hidden');
+  hidePauseMenu();
+  showEl('menu-overlay');
+  hideEl('gameover-overlay');
+  hideEl('hud-top');
+  hideEl('hud-bottom');
+  updateMainMenu();
+  Audio2.ensure();
+  if (Audio2.musicOn) Audio2.startMusic();
 }
 
 function finalizeTape() {
@@ -69,6 +265,7 @@ function finalizeTape() {
 
 function gameOver(victory) {
   stopAITimer();
+  SaveGame.clear();
   finalizeTape();
   $('go-title').textContent = victory ? 'Victory!' : 'Defeat';
   $('go-title').className = victory ? 'victory' : 'defeat';
@@ -145,8 +342,8 @@ function refreshHighlights() {
 }
 
 function humanCanAct() {
-  return game && !replay.active && !game.winner && game.currentPlayer.id === HUMAN &&
-    game.players[HUMAN - 1].alive;
+  return game && !replay.active && !isPauseVisible() && !game.winner &&
+    game.currentPlayer.id === HUMAN && game.players[HUMAN - 1].alive;
 }
 
 function onTap(key) {
@@ -222,6 +419,7 @@ function afterAction() {
   drainEvents();
   refreshHighlights();
   updateHud();
+  autosave();
   if (game.winner) endCheck();
 }
 
@@ -253,6 +451,7 @@ function endTurn() {
   drainEvents();
   refreshHighlights();
   updateHud();
+  autosave();
   endCheck();
   maybeRunAI();
 }
@@ -267,7 +466,7 @@ function stopAITimer() {
 }
 
 function maybeRunAI() {
-  if (!game || game.winner || replay.active) return;
+  if (!game || game.winner || replay.active || isPauseVisible()) return;
   if (!game.currentPlayer.isAI) { updateHud(); return; }
   const diff = game.opts.difficulty;
   const stepDelay = game.tiles.size > 200 ? 90 : 150;
@@ -602,66 +801,88 @@ function doUndo() {
 // ============================================================
 //  Buttons
 // ============================================================
-$('btn-u1').onclick = () => setBuildMode({ type: 'unit', level: 1 });
-$('btn-u2').onclick = () => setBuildMode({ type: 'unit', level: 2 });
-$('btn-u3').onclick = () => setBuildMode({ type: 'unit', level: 3 });
-$('btn-u4').onclick = () => setBuildMode({ type: 'unit', level: 4 });
-$('btn-town').onclick = () => setBuildMode({ type: 'town' });
-$('btn-tower').onclick = () => setBuildMode({ type: 'tower' });
-$('btn-upgrade').onclick = () => setBuildMode({ type: 'upgrade' });
-$('btn-undo').onclick = doUndo;
-$('btn-end').onclick = endTurn;
-$('btn-start').onclick = newGame;
-$('btn-replay').onclick = startReplay;
-$('btn-again').onclick = () => { $('gameover-overlay').classList.add('hidden'); showMenu(); };
-$('btn-menu').onclick = () => { stopAITimer(); showMenu(); };
-$('replay-play').onclick = toggleReplayPlay;
-$('replay-rewind').onclick = () => {
+bindClick('btn-u1', () => setBuildMode({ type: 'unit', level: 1 }));
+bindClick('btn-u2', () => setBuildMode({ type: 'unit', level: 2 }));
+bindClick('btn-u3', () => setBuildMode({ type: 'unit', level: 3 }));
+bindClick('btn-u4', () => setBuildMode({ type: 'unit', level: 4 }));
+bindClick('btn-town', () => setBuildMode({ type: 'town' }));
+bindClick('btn-tower', () => setBuildMode({ type: 'tower' }));
+bindClick('btn-upgrade', () => setBuildMode({ type: 'upgrade' }));
+bindClick('btn-undo', doUndo);
+bindClick('btn-end', endTurn);
+bindClick('btn-start', newGame);
+bindClick('btn-resume', resumeGame);
+bindClick('btn-replay', startReplay);
+bindClick('btn-again', () => { SaveGame.clear(); hideEl('gameover-overlay'); showMenu(); });
+bindClick('btn-menu', () => showPauseMenu());
+bindClick('btn-pause-continue', () => { hidePauseMenu(); maybeRunAI(); });
+bindClick('btn-pause-restart', restartGame);
+bindClick('btn-pause-end', endGameFromPause);
+bindClick('replay-play', toggleReplayPlay);
+bindClick('replay-rewind', () => {
   if (!replay.active) return;
   replay.playing = false;
-  $('replay-play').textContent = '▶';
+  const playBtn = $('replay-play');
+  if (playBtn) playBtn.textContent = '▶';
   clearReplayTimer();
   showReplayFrame(0);
-};
-$('replay-step-back').onclick = () => {
+});
+bindClick('replay-step-back', () => {
   if (!replay.active) return;
   replay.playing = false;
-  $('replay-play').textContent = '▶';
+  const playBtn = $('replay-play');
+  if (playBtn) playBtn.textContent = '▶';
   clearReplayTimer();
   showReplayFrame(replay.index - 1);
-};
-$('replay-step-fwd').onclick = () => {
+});
+bindClick('replay-step-fwd', () => {
   if (!replay.active) return;
   showReplayFrame(replay.index + 1);
-};
-$('replay-exit').onclick = exitReplay;
-$('replay-speed').oninput = (e) => {
-  replay.speed = +e.target.value;
-  $('replay-speed-val').textContent = replay.speed + '×';
-  if (replay.playing) {
-    clearReplayTimer();
-    scheduleReplayAdvance();
-  }
-};
+});
+bindClick('replay-exit', exitReplay);
+const replaySpeed = $('replay-speed');
+if (replaySpeed) {
+  replaySpeed.oninput = (e) => {
+    replay.speed = +e.target.value;
+    const val = $('replay-speed-val');
+    if (val) val.textContent = replay.speed + '×';
+    if (replay.playing) {
+      clearReplayTimer();
+      scheduleReplayAdvance();
+    }
+  };
+}
 
-$('opt-map').onchange = () => {
-  const real = $('opt-map').value !== 'random';
-  $('row-size').classList.toggle('hidden', real);
-  $('row-ai').classList.toggle('hidden', real);
-  $('map-note').classList.toggle('hidden', !real);
-};
+const optMap = $('opt-map');
+if (optMap) {
+  optMap.onchange = () => {
+    const real = optMap.value !== 'random';
+    const rowSize = $('row-size');
+    const rowAi = $('row-ai');
+    const mapNote = $('map-note');
+    if (rowSize) rowSize.classList.toggle('hidden', real);
+    if (rowAi) rowAi.classList.toggle('hidden', real);
+    if (mapNote) mapNote.classList.toggle('hidden', !real);
+  };
+}
 
-$('btn-music').onclick = () => {
+bindClick('btn-music', () => {
   Audio2.ensure();
   const on = Audio2.toggleMusic();
-  $('btn-music').textContent = on ? '♫' : '♪̸';
-  $('btn-music').classList.toggle('off', !on);
-};
-$('btn-sfx').onclick = () => {
+  const btn = $('btn-music');
+  if (btn) {
+    btn.textContent = on ? '♫' : '♪̸';
+    btn.classList.toggle('off', !on);
+  }
+});
+bindClick('btn-sfx', () => {
   const on = Audio2.toggleSfx();
-  $('btn-sfx').textContent = on ? '🔊' : '🔇';
-  $('btn-sfx').classList.toggle('off', !on);
-};
+  const btn = $('btn-sfx');
+  if (btn) {
+    btn.textContent = on ? '🔊' : '🔇';
+    btn.classList.toggle('off', !on);
+  }
+});
 
 // populate unit button icons from sprites
 function paintButtonIcons() {
@@ -670,10 +891,40 @@ function paintButtonIcons() {
     ['btn-town', 'town'], ['btn-tower', 'tower1'], ['btn-upgrade', 'city'],
   ];
   for (const [id, sprite] of map) {
-    const cnv = $(id).querySelector('canvas');
+    const btn = $(id);
+    if (!btn) continue;
+    const cnv = btn.querySelector('canvas');
+    if (!cnv) continue;
     const g = cnv.getContext('2d');
+    if (!g) continue;
     g.drawImage(Sprites.get(sprite, 96), 0, 0, cnv.width, cnv.height);
   }
+}
+
+function setupNativeLifecycle() {
+  const native = getHexNative();
+  native.onBackButton(handleBackButton);
+  native.onPause(onAppBackground);
+  native.onResume(onAppForeground);
+  document.addEventListener('backbutton', (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    handleBackButton();
+  }, false);
+  if (!native.isNative()) {
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) onAppBackground();
+      else onAppForeground();
+    });
+  }
+}
+
+function boot() {
+  try { paintButtonIcons(); } catch (err) { console.error('paintButtonIcons failed', err); }
+  updateMainMenu();
+  showMenu();
+  requestAnimationFrame(loop);
+  setupNativeLifecycle();
+  appReady = true;
 }
 
 // ============================================================
@@ -687,13 +938,19 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
-window.addEventListener('resize', () => {
-  if (renderer) renderer.resize();
-});
+let resizeTimer = null;
+function scheduleResize() {
+  if (!renderer) return;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => renderer.resize(), 120);
+}
 
-paintButtonIcons();
-showMenu();
-requestAnimationFrame(loop);
+window.addEventListener('resize', scheduleResize);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', scheduleResize);
+}
+
+boot();
 
 // PWA service worker (browser only — Capacitor APK bundles assets locally)
 if ('serviceWorker' in navigator && location.protocol.startsWith('http') &&

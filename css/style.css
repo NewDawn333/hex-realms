@@ -10,6 +10,8 @@ html, body {
   -webkit-user-select: none;
   user-select: none;
   touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  tap-highlight-color: transparent;
 }
 
 #game-canvas {
@@ -19,6 +21,9 @@ html, body {
   height: 100%;
   display: block;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  tap-highlight-color: transparent;
+  outline: none;
 }
 
 .hidden { display: none !important; }
@@ -192,6 +197,12 @@ html, body {
   text-align: center;
   margin-bottom: 4px;
   letter-spacing: 1px;
+}
+.panel h2 {
+  font-size: 26px;
+  text-align: center;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
 }
 .panel h1.victory { color: #ffe27a; }
 .panel h1.defeat { color: #ff9a8a; }

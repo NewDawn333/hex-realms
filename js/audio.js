@@ -65,6 +65,21 @@ const Audio2 = {
     if (this._seqTimer) { clearInterval(this._seqTimer); this._seqTimer = null; }
   },
 
+  stopAll() {
+    this.stopMusic();
+    if (this.ctx && this.ctx.state === 'running') {
+      this.ctx.suspend().catch(() => {});
+    }
+  },
+
+  resumeAll() {
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+    if (this.musicOn && !this._seqTimer) this.startMusic();
+  },
+
   toggleMusic() {
     this.musicOn = !this.musicOn;
     if (this.musicOn) this.startMusic(); else this.stopMusic();

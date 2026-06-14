@@ -25,6 +25,7 @@ const COPY = [
   'js/ai.js',
   'js/main.js',
   'js/haptics.js',
+  'js/save.js',
 ];
 
 function rm(dir) {
