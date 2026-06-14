@@ -19,17 +19,24 @@ then open **http://localhost:8421**.
 
 ## Play on your Android phone
 
-### Online (recommended)
-
-The game is hosted on GitHub Pages — works anywhere you have internet, no Mac needed:
+### Online (recommended for quick tests)
 
 **https://newdawn333.github.io/hex-realms/**
 
-1. Open that link in **Chrome** on your phone.
-2. Tap **Start Game**, pick a map, and play.
-3. Optional — install like an app: Chrome menu (⋮) → **Add to Home screen** or **Install app**. It opens fullscreen and works offline after the first load.
+Works in Chrome with optional **Add to Home screen** (offline after first load).
 
-**Controls on phone:** tap to select/build/move; drag with one finger to pan; pinch to zoom.
+### Offline Android app (no internet)
+
+Install the native APK built with Capacitor — all game files are bundled inside.
+See **[ANDROID.md](ANDROID.md)** for setup, USB install, and how to push updates
+after you change the game on Mac.
+
+```bash
+cd ~/Desktop/Cursor/hex-realms
+npm install          # once
+npm run cap:sync     # after each round of changes
+npm run cap:run      # install on phone via USB
+```
 
 ### Same Wi-Fi (local dev)
 
@@ -42,7 +49,7 @@ If you're testing changes before they're pushed:
 
 ### Future: Play Store
 
-The game is PWA-ready. We can later wrap it with [Capacitor](https://capacitorjs.com) into a proper APK if you want it on the Play Store.
+Release builds use the same Capacitor project with a signed APK/AAB in Android Studio.
 
 ## Maps
 

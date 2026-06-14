@@ -2,7 +2,17 @@
 
 let game = null;
 let renderer = null;
+let completedTape = null;
 const HUMAN = 1;
+
+const replay = {
+  active: false,
+  playing: false,
+  tape: [],
+  index: 0,
+  speed: 1,
+  timer: null,
+};
 
 const sel = {
   provId: null,
@@ -18,6 +28,8 @@ const canvas = $('game-canvas');
 //  Game lifecycle
 // ============================================================
 function newGame() {
+  stopAITimer();
+  stopReplay();
   const opts = {
     map: $('opt-map').value,
     size: $('opt-size').value,
@@ -39,15 +51,31 @@ function newGame() {
 }
 
 function showMenu() {
+  stopAITimer();
+  stopReplay();
   $('menu-overlay').classList.remove('hidden');
+  $('gameover-overlay').classList.add('hidden');
+  $('hud-top').classList.add('hidden');
+  $('hud-bottom').classList.add('hidden');
+}
+
+function finalizeTape() {
+  if (!game) return;
+  const last = game.tape[game.tape.length - 1];
+  const lastWinner = last ? JSON.parse(last.snapshot).winner : null;
+  if (!lastWinner && game.winner) game.recordStep('Game over');
+  completedTape = game.tape.slice();
 }
 
 function gameOver(victory) {
+  stopAITimer();
+  finalizeTape();
   $('go-title').textContent = victory ? 'Victory!' : 'Defeat';
   $('go-title').className = victory ? 'victory' : 'defeat';
   $('go-text').textContent = victory
     ? 'All rival realms have fallen. The island is yours.'
     : 'Your realm has crumbled. Better luck next conquest.';
+  $('btn-replay').classList.toggle('hidden', !completedTape || completedTape.length < 2);
   $('gameover-overlay').classList.remove('hidden');
   if (victory) Audio2.victory(); else Audio2.defeat();
 }
@@ -117,12 +145,12 @@ function refreshHighlights() {
 }
 
 function humanCanAct() {
-  return game && !game.winner && game.currentPlayer.id === HUMAN &&
+  return game && !replay.active && !game.winner && game.currentPlayer.id === HUMAN &&
     game.players[HUMAN - 1].alive;
 }
 
 function onTap(key) {
-  if (!humanCanAct()) return;
+  if (replay.active || !humanCanAct()) return;
   const t = game.tiles.get(key);
 
   // build placement (mode stays active for rapid repeat placement)
@@ -221,6 +249,7 @@ function endTurn() {
   clearSelection();
   game.endTurn();
   Audio2.turn();
+  HapticsUtil.turn();
   drainEvents();
   refreshHighlights();
   updateHud();
@@ -233,8 +262,12 @@ function endTurn() {
 // ============================================================
 let aiTimer = null;
 
+function stopAITimer() {
+  if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; }
+}
+
 function maybeRunAI() {
-  if (!game || game.winner) return;
+  if (!game || game.winner || replay.active) return;
   if (!game.currentPlayer.isAI) { updateHud(); return; }
   const diff = game.opts.difficulty;
   const stepDelay = game.tiles.size > 200 ? 90 : 150;
@@ -270,6 +303,83 @@ function maybeRunAI() {
 }
 
 // ============================================================
+//  Replay
+// ============================================================
+function clearReplayTimer() {
+  if (replay.timer) { clearTimeout(replay.timer); replay.timer = null; }
+}
+
+function stopReplay() {
+  replay.active = false;
+  replay.playing = false;
+  clearReplayTimer();
+  if (game) game.replaying = false;
+  $('replay-bar').classList.add('hidden');
+  if (game && !game.winner) $('hud-bottom').classList.remove('hidden');
+  $('btn-menu').classList.remove('hidden');
+  $('replay-play').textContent = '▶';
+}
+
+function showReplayFrame(index) {
+  const frame = replay.tape[index];
+  if (!frame || !game) return;
+  replay.index = Math.max(0, Math.min(index, replay.tape.length - 1));
+  game.replaying = true;
+  game.recording = false;
+  game.restore(replay.tape[replay.index].snapshot);
+  game.events = replay.tape[replay.index].events.map(e => ({ ...e }));
+  clearSelection();
+  drainEvents();
+  updateHud();
+}
+
+function scheduleReplayAdvance() {
+  clearReplayTimer();
+  if (!replay.active || !replay.playing) return;
+  if (replay.index >= replay.tape.length - 1) {
+    replay.playing = false;
+    $('replay-play').textContent = '▶';
+    return;
+  }
+  const delay = Math.max(20, 450 / replay.speed);
+  replay.timer = setTimeout(() => {
+    showReplayFrame(replay.index + 1);
+    scheduleReplayAdvance();
+  }, delay);
+}
+
+function startReplay() {
+  if (!completedTape || completedTape.length < 2) return;
+  stopAITimer();
+  $('gameover-overlay').classList.add('hidden');
+  replay.active = true;
+  replay.tape = completedTape;
+  replay.index = 0;
+  replay.playing = true;
+  replay.speed = +$('replay-speed').value || 1;
+  $('hud-bottom').classList.add('hidden');
+  $('replay-bar').classList.remove('hidden');
+  $('btn-menu').classList.add('hidden');
+  $('replay-play').textContent = '⏸';
+  $('replay-speed-val').textContent = replay.speed + '×';
+  showReplayFrame(0);
+  scheduleReplayAdvance();
+}
+
+function toggleReplayPlay() {
+  if (!replay.active) return;
+  replay.playing = !replay.playing;
+  $('replay-play').textContent = replay.playing ? '⏸' : '▶';
+  if (replay.playing) scheduleReplayAdvance();
+  else clearReplayTimer();
+}
+
+function exitReplay() {
+  stopReplay();
+  $('gameover-overlay').classList.remove('hidden');
+}
+
+// ============================================================
 //  Events -> fx
 // ============================================================
 function drainEvents() {
@@ -288,6 +398,7 @@ function drainEvents() {
         if (ev.from && u) renderer.addSlide(ev.from, ev.to, u.level, null);
         renderer.addPop(ev.to);
         Audio2.capture();
+        HapticsUtil.capture();
         break;
       }
       case 'chop':
@@ -303,6 +414,7 @@ function drainEvents() {
       case 'build':
         renderer.addPop(ev.key);
         Audio2.build();
+        HapticsUtil.build();
         break;
       case 'starve':
         renderer.addFloatText(ev.key, '✝', '#ccc');
@@ -315,7 +427,10 @@ function drainEvents() {
         break;
     }
   }
-  if (starved) Audio2.starve();
+  if (starved) {
+    Audio2.starve();
+    HapticsUtil.starve();
+  }
   game.events.length = 0;
 }
 
@@ -324,6 +439,18 @@ function drainEvents() {
 // ============================================================
 function updateHud() {
   if (!game) return;
+  if (replay.active) {
+    const frame = replay.tape[replay.index];
+    const p = game.currentPlayer;
+    $('hud-round').textContent = 'Replay · Round ' + (frame?.round ?? game.round);
+    const chip = $('hud-player');
+    const pname = p ? (p.name || p.color.name) : '';
+    chip.textContent = frame?.label ? frame.label : pname;
+    chip.style.background = p?.color.main ?? '#555';
+    $('prov-panel').classList.add('hidden');
+    $('replay-progress').textContent = `${replay.index + 1} / ${replay.tape.length}`;
+    return;
+  }
   const p = game.currentPlayer;
   const scenario = game.opts.map && game.opts.map !== 'random';
   $('hud-round').textContent = 'Round ' + game.round;
@@ -485,14 +612,44 @@ $('btn-upgrade').onclick = () => setBuildMode({ type: 'upgrade' });
 $('btn-undo').onclick = doUndo;
 $('btn-end').onclick = endTurn;
 $('btn-start').onclick = newGame;
+$('btn-replay').onclick = startReplay;
+$('btn-again').onclick = () => { $('gameover-overlay').classList.add('hidden'); showMenu(); };
+$('btn-menu').onclick = () => { stopAITimer(); showMenu(); };
+$('replay-play').onclick = toggleReplayPlay;
+$('replay-rewind').onclick = () => {
+  if (!replay.active) return;
+  replay.playing = false;
+  $('replay-play').textContent = '▶';
+  clearReplayTimer();
+  showReplayFrame(0);
+};
+$('replay-step-back').onclick = () => {
+  if (!replay.active) return;
+  replay.playing = false;
+  $('replay-play').textContent = '▶';
+  clearReplayTimer();
+  showReplayFrame(replay.index - 1);
+};
+$('replay-step-fwd').onclick = () => {
+  if (!replay.active) return;
+  showReplayFrame(replay.index + 1);
+};
+$('replay-exit').onclick = exitReplay;
+$('replay-speed').oninput = (e) => {
+  replay.speed = +e.target.value;
+  $('replay-speed-val').textContent = replay.speed + '×';
+  if (replay.playing) {
+    clearReplayTimer();
+    scheduleReplayAdvance();
+  }
+};
+
 $('opt-map').onchange = () => {
   const real = $('opt-map').value !== 'random';
   $('row-size').classList.toggle('hidden', real);
   $('row-ai').classList.toggle('hidden', real);
   $('map-note').classList.toggle('hidden', !real);
 };
-$('btn-again').onclick = () => { $('gameover-overlay').classList.add('hidden'); showMenu(); };
-$('btn-menu').onclick = () => { if (aiTimer) clearTimeout(aiTimer); showMenu(); };
 
 $('btn-music').onclick = () => {
   Audio2.ensure();
@@ -538,7 +695,8 @@ paintButtonIcons();
 showMenu();
 requestAnimationFrame(loop);
 
-// PWA service worker (only when served over http(s), not file://)
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+// PWA service worker (browser only — Capacitor APK bundles assets locally)
+if ('serviceWorker' in navigator && location.protocol.startsWith('http') &&
+    !window.Capacitor?.isNativePlatform?.()) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }

@@ -20,6 +20,9 @@ class Game {
     this.winner = null;
     this.events = [];            // drained by renderer/UI for fx
     this.undoStack = [];
+    this.recording = true;
+    this.replaying = false;
+    this.tape = [];              // replay frames: { snapshot, events, round, playerId }
 
     const seed = opts.seed || ((Math.random() * 1e9) | 0);
     this.seed = seed;
@@ -48,6 +51,7 @@ class Game {
     }
     this.refreshProvinceStats();
     this.startTurn();
+    this.recordStep('Game start');
   }
 
   // ---------- accessors ----------
@@ -291,6 +295,7 @@ class Game {
       this.recomputeProvinces();
     }
     this.refreshProvinceStats();
+    this.recordStep();
     return true;
   }
 
@@ -356,6 +361,7 @@ class Game {
     }
     this.emit('spawn', { key: targetKey });
     this.refreshProvinceStats();
+    this.recordStep();
     return true;
   }
 
@@ -404,6 +410,7 @@ class Game {
     else if (what === 'tower2') { this.addMoney(provId, -RULES.COST_TOWER_UPGRADE); t.towerLevel = 2; }
     this.emit('build', { key: targetKey, what });
     this.refreshProvinceStats();
+    this.recordStep();
     return true;
   }
 
@@ -450,6 +457,7 @@ class Game {
       this.growTrees();
     }
     this.startTurn();
+    this.recordStep('Turn');
   }
 
   // Trees slowly spread — the dynamic pressure that keeps maps alive
@@ -477,28 +485,62 @@ class Game {
     if (newTrees.length) this.refreshProvinceStats();
   }
 
-  // ---------- undo ----------
+  // ---------- undo & replay tape ----------
+  recordStep(label) {
+    if (!this.recording || this.replaying) return;
+    this.tape.push({
+      snapshot: this.serialize(),
+      events: this.events.map(e => ({ ...e })),
+      label: label || null,
+      round: this.round,
+      turnIndex: this.turnIndex,
+      playerId: this.currentPlayer?.id ?? 0,
+    });
+  }
+
   serialize() {
     const tiles = [];
     for (const [k, t] of this.tiles) {
-      tiles.push([k, t.owner, t.kind, t.towerLevel, t.tree ? 1 : 0,
+      tiles.push([k, t.owner, t.kind, t.towerLevel, t.tree ? 1 : 0, t.strait ? 1 : 0,
         t.unit ? t.unit.level : 0, t.unit ? (t.unit.moved ? 1 : 0) : 0, t.money || 0]);
     }
-    return JSON.stringify({ tiles, turnIndex: this.turnIndex, round: this.round });
+    const players = this.players.map(p => [p.id, p.alive ? 1 : 0, p.name]);
+    return JSON.stringify({
+      tiles, turnIndex: this.turnIndex, round: this.round,
+      players, winner: this.winner,
+    });
   }
 
   restore(json) {
     const s = JSON.parse(json);
-    for (const [k, owner, kind, towerLevel, tree, ulvl, umoved, money] of s.tiles) {
-      const t = this.tiles.get(k);
-      t.owner = owner; t.kind = kind; t.towerLevel = towerLevel;
-      t.tree = !!tree;
-      t.unit = ulvl ? { level: ulvl, moved: !!umoved } : null;
-      t.money = money;
+    for (const row of s.tiles) {
+      const t = this.tiles.get(row[0]);
+      if (!t) continue;
+      t.owner = row[1];
+      t.kind = row[2];
+      t.towerLevel = row[3];
+      t.tree = !!row[4];
+      if (row.length >= 9) {
+        t.strait = !!row[5];
+        t.unit = row[6] ? { level: row[6], moved: !!row[7] } : null;
+        t.money = row[8] || 0;
+      } else {
+        t.strait = false;
+        t.unit = row[5] ? { level: row[5], moved: !!row[6] } : null;
+        t.money = row[7] || 0;
+      }
     }
     this.turnIndex = s.turnIndex;
     this.round = s.round;
+    if (s.players) {
+      for (const [id, alive, name] of s.players) {
+        const p = this.players.find(pl => pl.id === id);
+        if (p) { p.alive = !!alive; if (name) p.name = name; }
+      }
+    }
+    this.winner = s.winner ?? null;
     this.recomputeProvinces();
+    this.refreshProvinceStats();
   }
 
   pushUndo() {

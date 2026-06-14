@@ -218,8 +218,8 @@ Ordered roughly by value/effort. Each item is self-contained.
 - Settings: animation speed, colorblind palette, left-handed HUD.
 
 ### 7.3 Mobile/native
-- Capacitor wrap → Play Store APK (game is already touch-first + PWA).
-- Haptics on capture/starve via Capacitor Haptics plugin.
+- ~~Capacitor wrap → Play Store APK~~ **Done** — see `ANDROID.md`, `npm run cap:sync`.
+- ~~Haptics on capture/starve~~ **Done** — `js/haptics.js` + `@capacitor/haptics`.
 - Cloud sync of campaign progress (later).
 
 ### 7.4 Multiplayer (big)
