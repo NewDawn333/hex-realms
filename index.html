@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#14283a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Hex Realms</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <!-- top HUD -->
+  <div id="hud-top" class="hidden">
+    <div class="hud-group">
+      <span id="hud-round">Round 1</span>
+      <span id="hud-player" class="player-chip">Your turn</span>
+    </div>
+    <div id="prov-panel" class="hud-group hidden">
+      <span class="coin-dot"></span>
+      <span id="prov-gold">0</span>
+      <span id="prov-income" class="pos">+0/turn</span>
+    </div>
+    <div class="hud-group">
+      <button id="btn-music" class="icon-btn" title="Music">♫</button>
+      <button id="btn-sfx" class="icon-btn" title="Sound effects">🔊</button>
+      <button id="btn-menu" class="icon-btn" title="Menu">☰</button>
+    </div>
+  </div>
+
+  <!-- bottom HUD -->
+  <div id="hud-bottom" class="hidden">
+    <div class="build-row">
+      <button id="btn-u1" class="build-btn" title="Militia — beats undefended tiles">
+        <canvas width="48" height="48"></canvas><span class="cost">3</span>
+      </button>
+      <button id="btn-u2" class="build-btn" title="Spearman — beats militia">
+        <canvas width="48" height="48"></canvas><span class="cost">8</span>
+      </button>
+      <button id="btn-u3" class="build-btn" title="Knight — beats spearmen &amp; most defenses">
+        <canvas width="48" height="48"></canvas><span class="cost">18</span>
+      </button>
+      <button id="btn-u4" class="build-btn" title="Champion — breaks any siege">
+        <canvas width="48" height="48"></canvas><span class="cost">33</span>
+      </button>
+      <span class="divider"></span>
+      <button id="btn-town" class="build-btn" title="Town — +3 income (build near a settlement)">
+        <canvas width="48" height="48"></canvas><span class="cost">5</span>
+      </button>
+      <button id="btn-tower" class="build-btn" title="Watchtower — defends surrounding tiles">
+        <canvas width="48" height="48"></canvas><span class="cost">15</span>
+      </button>
+      <button id="btn-upgrade" class="build-btn" title="Upgrade town → city, or tower → bastion">
+        <canvas width="48" height="48"></canvas><span class="cost">10</span>
+      </button>
+      <span class="divider"></span>
+      <button id="btn-undo" class="text-btn" title="Undo (Cmd+Z)">↩︎ Undo</button>
+      <button id="btn-end" class="text-btn primary" title="End turn (Enter)">End Turn ➤</button>
+    </div>
+  </div>
+
+  <!-- main menu -->
+  <div id="menu-overlay" class="overlay">
+    <div class="panel">
+      <h1>⬡ Hex Realms</h1>
+      <p class="tagline">Conquer the island, province by province.</p>
+      <div class="opt-row">
+        <label for="opt-map">Map</label>
+        <select id="opt-map">
+          <option value="random" selected>Random Island</option>
+          <option value="uk">United Kingdom</option>
+          <option value="california">California</option>
+          <option value="europe">Europe</option>
+        </select>
+      </div>
+      <div class="opt-row" id="row-size">
+        <label for="opt-size">Map size</label>
+        <select id="opt-size">
+          <option value="small">Small</option>
+          <option value="medium" selected>Medium</option>
+          <option value="large">Large</option>
+          <option value="huge">Huge</option>
+        </select>
+      </div>
+      <p id="map-note" class="map-note hidden">Factions and start positions are set by the map.</p>
+      <div class="opt-row" id="row-ai">
+        <label for="opt-ai">Opponents</label>
+        <select id="opt-ai">
+          <option value="1">1</option>
+          <option value="2" selected>2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+      </div>
+      <div class="opt-row">
+        <label for="opt-diff">Difficulty</label>
+        <select id="opt-diff">
+          <option value="easy">Easy</option>
+          <option value="normal" selected>Normal</option>
+          <option value="hard">Hard</option>
+        </select>
+      </div>
+      <button id="btn-start" class="text-btn primary big">Start Game</button>
+      <details class="howto">
+        <summary>How to play</summary>
+        <ul>
+          <li>Tap a buy button below, then tap any highlighted hex to place it (red = capture).</li>
+          <li>Tap a soldier, then a highlighted hex to <b>move</b> it. Merge soldiers to promote them.</li>
+          <li>Each connected blob of your color is a <b>province</b> with its own treasury (shown on its capital). Tap a tile to inspect one.</li>
+          <li>Stronger units beat weaker ones; towers and capitals protect their neighbors. Champions break any defense.</li>
+          <li>Soldiers cost upkeep every turn — if a province goes bankrupt, its army starves!</li>
+          <li>Towns and cities boost income. Chop trees for quick gold before they spread.</li>
+          <li>Mountains are impassable. Blue strait hexes are sea crossings — armies can ferry over them.</li>
+          <li>Cut an enemy province in two to cripple it. Take every capital to win.</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+
+  <!-- game over -->
+  <div id="gameover-overlay" class="overlay hidden">
+    <div class="panel">
+      <h1 id="go-title">Victory!</h1>
+      <p id="go-text"></p>
+      <button id="btn-again" class="text-btn primary big">Play Again</button>
+    </div>
+  </div>
+
+  <script src="js/constants.js"></script>
+  <script src="js/hex.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/mapgen.js"></script>
+  <script src="js/realmaps.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
