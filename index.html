@@ -36,27 +36,14 @@
   <!-- bottom HUD -->
   <div id="hud-bottom" class="hidden">
     <div class="build-row">
-      <button id="btn-u1" class="build-btn" title="Militia — beats undefended tiles">
+      <button id="btn-army" class="build-btn" title="Army — tap again to cycle level">
         <canvas width="48" height="48"></canvas><span class="cost">3</span>
       </button>
-      <button id="btn-u2" class="build-btn" title="Spearman — beats militia">
-        <canvas width="48" height="48"></canvas><span class="cost">8</span>
-      </button>
-      <button id="btn-u3" class="build-btn" title="Knight — beats spearmen &amp; watchtowers (lv3)">
-        <canvas width="48" height="48"></canvas><span class="cost">18</span>
-      </button>
-      <button id="btn-u4" class="build-btn" title="Champion — breaks bastions &amp; any siege">
-        <canvas width="48" height="48"></canvas><span class="cost">33</span>
-      </button>
-      <span class="divider"></span>
-      <button id="btn-town" class="build-btn" title="Town — +3 income (build near a settlement)">
+      <button id="btn-town" class="build-btn" title="Town — tap again for city">
         <canvas width="48" height="48"></canvas><span class="cost">5</span>
       </button>
-      <button id="btn-tower" class="build-btn" title="Watchtower — defends surrounding tiles">
+      <button id="btn-tower" class="build-btn" title="Tower — tap again for bastion">
         <canvas width="48" height="48"></canvas><span class="cost">15</span>
-      </button>
-      <button id="btn-upgrade" class="build-btn" title="Upgrade town → city, or watchtower → bastion (needs Champion)">
-        <canvas width="48" height="48"></canvas><span class="cost">10</span>
       </button>
       <span class="divider"></span>
       <button id="btn-undo" class="text-btn" title="Undo (Cmd+Z)">↩︎ Undo</button>
@@ -115,7 +102,8 @@
       <details class="howto">
         <summary>How to play</summary>
         <ul>
-          <li>Tap a buy button below, then tap any highlighted hex to place it (red = capture).</li>
+          <li>Tap <b>Army</b>, <b>Town</b>, or <b>Tower</b>, then tap again to cycle level (city, bastion, stronger units). Tap once more to deselect.</li>
+          <li>Tap a highlighted hex to place (red = capture). Placing on the same type upgrades it — e.g. town on town → city, tower on tower → bastion.</li>
           <li>Tap a soldier, then a highlighted hex to <b>move</b> it. Merge soldiers to promote them.</li>
           <li>Each connected blob of your color is a <b>province</b> with its own treasury (shown on its capital). Tap a tile to inspect one.</li>
           <li>Stronger units beat weaker ones; towers and capitals protect their neighbors. Champions break any defense.</li>
@@ -133,7 +121,7 @@
   <div id="editor-menu-overlay" class="overlay hidden">
     <div class="panel">
       <h2>Map Editor</h2>
-      <p class="tagline">Create custom scenarios saved on this device.</p>
+      <p class="tagline">Paint terrain only — player starts are assigned when you play.</p>
       <button id="editor-new-blank" class="text-btn primary big">Blank Map</button>
       <button id="editor-new-full" class="text-btn big">Full Hex Grid</button>
       <div id="editor-saved-list" class="editor-saved-list"></div>
@@ -148,14 +136,6 @@
       <button id="ed-erase" class="text-btn ed-tool" data-tool="erase">Erase</button>
       <button id="ed-mountain" class="text-btn ed-tool" data-tool="mountain">Mountain</button>
       <button id="ed-forest" class="text-btn ed-tool" data-tool="forest">Forest</button>
-      <button id="ed-start1" class="text-btn ed-tool" data-tool="start1">S1</button>
-      <button id="ed-start2" class="text-btn ed-tool" data-tool="start2">S2</button>
-      <button id="ed-start3" class="text-btn ed-tool" data-tool="start3">S3</button>
-      <button id="ed-start4" class="text-btn ed-tool" data-tool="start4">S4</button>
-      <button id="ed-start5" class="text-btn ed-tool" data-tool="start5">S5</button>
-      <button id="ed-start6" class="text-btn ed-tool" data-tool="start6">S6</button>
-      <button id="ed-start7" class="text-btn ed-tool" data-tool="start7">S7</button>
-      <button id="ed-start8" class="text-btn ed-tool" data-tool="start8">S8</button>
       <span class="divider"></span>
       <button id="editor-save-btn" class="text-btn primary">Save</button>
       <button id="editor-exit-btn" class="text-btn">Exit</button>

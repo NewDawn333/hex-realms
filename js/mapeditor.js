@@ -1,10 +1,10 @@
 'use strict';
 
-// Hex map editor — paint terrain, forests, mountains, and start points.
+// Hex map editor — paint terrain only (land, erase, mountain, forest).
 const MapEditor = {
   active: false,
   cells: new Map(),   // key -> { q, r, ch }
-  ghost: new Set(),   // editable hex positions (blank grid)
+  ghost: new Set(),
   tool: 'land',
   radius: 18,
   editId: null,
@@ -17,14 +17,6 @@ const MapEditor = {
     ['erase', 'Erase'],
     ['mountain', 'Mountain'],
     ['forest', 'Forest'],
-    ['start1', 'Start 1'],
-    ['start2', 'Start 2'],
-    ['start3', 'Start 3'],
-    ['start4', 'Start 4'],
-    ['start5', 'Start 5'],
-    ['start6', 'Start 6'],
-    ['start7', 'Start 7'],
-    ['start8', 'Start 8'],
   ],
 
   open(mode, existingId) {
@@ -51,6 +43,7 @@ const MapEditor = {
     }
 
     hideEl('menu-overlay');
+    hideEl('editor-menu-overlay');
     hideEl('hud-top');
     hideEl('hud-bottom');
     showEl('editor-bar');
@@ -65,6 +58,7 @@ const MapEditor = {
     this.previewRenderer = null;
     hideEl('editor-bar');
     hideEl('editor-save-panel');
+    hideEl('editor-menu-overlay');
     showMenu();
   },
 
@@ -78,23 +72,29 @@ const MapEditor = {
     }
   },
 
+  _normalizeChar(ch) {
+    const norm = CustomMaps._normalizeChar(ch);
+    return norm || '#';
+  },
+
   importRows(rows) {
     this.cells.clear();
     this.ghost.clear();
     rows.forEach((row, rowIdx) => {
       for (let col = 0; col < row.length; col++) {
-        const ch = row[col];
-        if (ch === '.' || ch === ' ' || ch === '~') continue;
+        const norm = CustomMaps._normalizeChar(row[col]);
+        if (!norm) continue;
         const q = col;
         const r = rowIdx - (col - (col & 1)) / 2;
         const k = Hex.key(q, r);
-        this.cells.set(k, { q, r, ch });
+        this.cells.set(k, { q, r, ch: norm === '#' ? '#' : norm });
         this.ghost.add(k);
       }
     });
     let maxD = 0;
     for (const c of this.cells.values()) maxD = Math.max(maxD, Hex.dist(0, 0, c.q, c.r));
     this._initGrid(Math.max(this.radius, maxD + 4));
+    for (const k of this.cells.keys()) this.ghost.add(k);
   },
 
   exportRows() {
@@ -111,7 +111,7 @@ const MapEditor = {
       for (let q = minQ; q <= maxQ; q++) {
         const r = row - (q - (q & 1)) / 2;
         const c = this.cells.get(Hex.key(q, r));
-        line += c ? c.ch : '.';
+        line += c ? (c.ch === '#' ? '#' : c.ch) : '.';
       }
       rows.push(line);
     }
@@ -136,48 +136,34 @@ const MapEditor = {
 
     if (!this.cells.has(key)) this.cells.set(key, { q: h.q, r: h.r, ch: '#' });
     const cell = this.cells.get(key);
-
-    if (this.tool === 'mountain') {
-      cell.ch = '^';
-    } else if (this.tool === 'forest') {
-      cell.ch = 'T';
-    } else if (this.tool.startsWith('start')) {
-      const n = this.tool.slice(5);
-      for (const c of this.cells.values()) if (c.ch === n) c.ch = '#';
-      cell.ch = n;
-    }
+    if (this.tool === 'mountain') cell.ch = '^';
+    else if (this.tool === 'forest') cell.ch = 'T';
     this._syncPreview();
+  },
+
+  _cellToTile(c) {
+    const tile = {
+      q: c.q, r: c.r, owner: 0, kind: 'plain', towerLevel: 0,
+      tree: false, strait: false, unit: null, money: 0,
+    };
+    if (c.ch === '^') tile.kind = 'mountain';
+    else if (c.ch === 'T' || c.ch === 't') tile.tree = true;
+    return tile;
   },
 
   _syncPreview() {
     const tiles = new Map();
-    for (const k of this.ghost) {
-      if (this.cells.has(k)) continue;
-      const h = Hex.fromKey(k);
-      tiles.set(k, {
-        q: h.q, r: h.r, owner: 0, kind: 'plain', towerLevel: 0,
-        tree: false, strait: false, unit: null, money: 0,
-      });
-    }
     for (const [k, c] of this.cells) {
-      const tile = {
-        q: c.q, r: c.r, owner: 0, kind: 'plain', towerLevel: 0,
-        tree: false, strait: false, unit: null, money: 0,
-      };
-      if (c.ch === '^') tile.kind = 'mountain';
-      else if (c.ch === 'T' || c.ch === 't') tile.tree = true;
-      else if (c.ch >= '1' && c.ch <= '8') {
-        tile.kind = 'capital';
-        tile.owner = +c.ch;
-      }
-      tiles.set(k, tile);
+      tiles.set(k, this._cellToTile(c));
     }
+
+    const previewPlayer = { id: 1, color: NEUTRAL_COLOR, isAI: false, name: 'Preview' };
     if (!this.previewGame) {
       this.previewGame = {
         tiles,
         round: 0,
-        currentPlayer: { id: 0, color: NEUTRAL_COLOR, isAI: true },
-        players: [{ id: 0, color: NEUTRAL_COLOR, isAI: true }],
+        currentPlayer: previewPlayer,
+        players: [previewPlayer],
         provinces: new Map(),
         tileProv: new Map(),
         winner: null,
@@ -186,6 +172,7 @@ const MapEditor = {
     } else {
       this.previewGame.tiles = tiles;
     }
+
     if (!this.previewRenderer && canvas) {
       this.previewRenderer = new Renderer(canvas, this.previewGame);
       Object.assign(this.previewRenderer.cam, this.cam);
@@ -198,7 +185,8 @@ const MapEditor = {
     if (!this.previewRenderer) return;
     let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
     const S = this.previewRenderer.hexSize;
-    for (const k of this.ghost) {
+    const keys = this.cells.size ? [...this.cells.keys()] : [...this.ghost];
+    for (const k of keys) {
       const h = Hex.fromKey(k);
       const p = Hex.toPixel(h.q, h.r, S);
       minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
@@ -236,8 +224,8 @@ const MapEditor = {
       r.hexPath(ctx, p.x, p.y, S * 0.82);
       ctx.fillStyle = 'rgba(255,255,255,0.06)';
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+      ctx.lineWidth = 1.2;
       ctx.stroke();
     }
     ctx.restore();
@@ -261,8 +249,8 @@ const MapEditor = {
     const del = $('editor-delete-map');
     if (del) del.classList.toggle('hidden', !this.editId);
     if (input) {
-      input.value = this.editId && CustomMaps.get(this.editId)
-        ? CustomMaps.get(this.editId).name : '';
+      const existing = this.editId && CustomMaps.get(this.editId);
+      input.value = existing ? existing.name : '';
       input.focus();
     }
   },
@@ -270,12 +258,6 @@ const MapEditor = {
   saveCurrent() {
     const input = $('editor-map-name');
     const name = (input && input.value ? input.value : '').trim() || 'Custom Map';
-    let starts = 0;
-    for (const c of this.cells.values()) if (c.ch >= '1' && c.ch <= '8') starts++;
-    if (starts < 2) {
-      alert('Place at least 2 start points (S1–S8) before saving.');
-      return;
-    }
     if (!this.cells.size) {
       alert('Paint some land before saving.');
       return;
@@ -321,10 +303,10 @@ function refreshMapOptions() {
   const rowAi = $('row-ai');
   const mapNote = $('map-note');
   if (rowSize) rowSize.classList.toggle('hidden', real || custom);
-  if (rowAi) rowAi.classList.toggle('hidden', real || custom);
+  if (rowAi) rowAi.classList.toggle('hidden', real);
   if (mapNote) {
     mapNote.textContent = custom
-      ? 'Player count follows start points on the custom map.'
+      ? 'Start positions are chosen randomly when the game begins.'
       : 'Factions and start positions are set by the map.';
     mapNote.classList.toggle('hidden', !real && !custom);
   }

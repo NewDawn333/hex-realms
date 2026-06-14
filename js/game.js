@@ -30,9 +30,7 @@ class Game {
 
     const scenario = opts.map && opts.map !== 'random' && !(opts.map && opts.map.startsWith('custom:'));
     const customId = opts.map && opts.map.startsWith('custom:') ? opts.map.slice(7) : null;
-    const total = scenario ? RealMaps.startCount(opts.map)
-      : customId ? CustomMaps.startCount(customId)
-      : 1 + opts.aiCount;
+    const total = scenario ? RealMaps.startCount(opts.map) : 1 + opts.aiCount;
     for (let i = 1; i <= total; i++) {
       this.players.push({
         id: i, color: PLAYER_COLORS[i - 1], name: PLAYER_COLORS[i - 1].name,
@@ -41,7 +39,7 @@ class Game {
     }
 
     if (scenario) RealMaps.build(this, opts.map);
-    else if (opts.map && opts.map.startsWith('custom:')) CustomMaps.build(this, opts.map.slice(7));
+    else if (customId) CustomMaps.build(this, customId);
     else MapGen.generate(this, MAP_SIZES[opts.size] || MAP_SIZES.medium);
 
     this.provinces = new Map();  // id -> province
@@ -327,7 +325,7 @@ class Game {
     for (const fromKey of units) {
       const from = this.tiles.get(fromKey);
       if (!from?.unit || from.unit.moved) continue;
-      const dest = this._bestMoveToward(fromKey, targetKey);
+      const dest = this._bestMoveToward(fromKey, targetKey, true);
       if (dest && this.moveUnit(fromKey, dest, { skipUndo: true, skipRecord: true })) acted = true;
     }
     if (acted) {
@@ -339,11 +337,15 @@ class Game {
     return acted;
   }
 
-  _bestMoveToward(fromKey, targetKey) {
+  _bestMoveToward(fromKey, targetKey, noMerge) {
     const target = Hex.fromKey(targetKey);
     const lm = this.legalMoves(fromKey);
     let best = null, bestD = Infinity;
     const consider = (k) => {
+      if (noMerge) {
+        const dest = this.tiles.get(k);
+        if (dest && dest.unit) return;
+      }
       const h = Hex.fromKey(k);
       const d = Hex.dist(h.q, h.r, target.q, target.r);
       if (d < bestD) { bestD = d; best = k; }
@@ -424,16 +426,20 @@ class Game {
     const out = new Set();
     if (!prov) return out;
     const cost = what === 'town' ? RULES.COST_TOWN
-      : what === 'tower' ? RULES.COST_TOWER
       : what === 'city' ? RULES.COST_CITY_UPGRADE
-      : RULES.COST_TOWER_UPGRADE;
+      : what === 'city_new' ? RULES.COST_CITY_NEW
+      : what === 'tower' ? RULES.COST_TOWER
+      : what === 'tower2' ? RULES.COST_TOWER_UPGRADE
+      : what === 'bastion' ? RULES.COST_BASTION
+      : 0;
     if (prov.money < cost) return out;
 
     for (const k of prov.tiles) {
       const t = this.tiles.get(k);
-      if (what === 'town') {
-        if (t.kind === 'plain' && !t.unit && !t.tree && !t.strait && this.hasAdjacentSettlement(t, prov)) out.add(k);
-      } else if (what === 'tower') {
+      if (what === 'town' || what === 'city_new') {
+        if (t.kind === 'plain' && !t.unit && !t.tree && !t.strait &&
+            this.hasAdjacentSettlement(t, prov)) out.add(k);
+      } else if (what === 'tower' || what === 'bastion') {
         if (t.kind === 'plain' && !t.unit && !t.tree && !t.strait) out.add(k);
       } else if (what === 'city') {
         if (t.kind === 'town') out.add(k);
@@ -460,8 +466,14 @@ class Game {
     const t = this.tiles.get(targetKey);
     if (what === 'town') { this.addMoney(provId, -RULES.COST_TOWN); t.kind = 'town'; }
     else if (what === 'city') { this.addMoney(provId, -RULES.COST_CITY_UPGRADE); t.kind = 'city'; }
+    else if (what === 'city_new') { this.addMoney(provId, -RULES.COST_CITY_NEW); t.kind = 'city'; }
     else if (what === 'tower') { this.addMoney(provId, -RULES.COST_TOWER); t.kind = 'tower'; t.towerLevel = 1; }
     else if (what === 'tower2') { this.addMoney(provId, -RULES.COST_TOWER_UPGRADE); t.towerLevel = 2; }
+    else if (what === 'bastion') {
+      this.addMoney(provId, -RULES.COST_BASTION);
+      t.kind = 'tower';
+      t.towerLevel = 2;
+    }
     this.emit('build', { key: targetKey, what });
     this.refreshProvinceStats();
     this.recordStep();

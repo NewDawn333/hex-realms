@@ -11,8 +11,10 @@ const RULES = {
 
   COST_TOWN: 5,
   COST_CITY_UPGRADE: 10,
+  COST_CITY_NEW: 15,
   COST_TOWER: 15,
   COST_TOWER_UPGRADE: 10,
+  COST_BASTION: 35,
   TOWER_UPKEEP: [0, 5, 15],
 
   // Income by hex kind (a hex with a tree produces 0)

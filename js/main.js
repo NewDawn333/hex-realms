@@ -17,7 +17,7 @@ const replay = {
 const sel = {
   provId: null,
   unitKey: null,
-  build: null,     // {type:'unit', level} | {type:'town'|'tower'|'upgrade'}
+  build: null,     // { type:'unit'|'town'|'tower', level:1.. }
   buildMap: null,  // key -> {provId, action} computed for the active build mode
 };
 
@@ -100,6 +100,7 @@ function autosave() {
 // ============================================================
 function newGame() {
   try {
+    if (MapEditor.active) MapEditor.close();
     stopAITimer();
     stopReplay();
     SaveGame.clear();
@@ -125,6 +126,7 @@ function newGame() {
     maybeRunAI();
   } catch (err) {
     console.error('newGame failed', err);
+    alert(err.message || 'Could not start the game.');
   }
 }
 
@@ -331,19 +333,25 @@ function refreshHighlights() {
           claim(k, prov.id, 'unit');
           (mode === 'capture' ? renderer.highlightAttacks : renderer.highlightBuild).add(k);
         }
-      } else if (sel.build.type === 'town' || sel.build.type === 'tower') {
-        for (const k of game.buildTargets(prov, sel.build.type)) {
-          claim(k, prov.id, sel.build.type);
-          renderer.highlightBuild.add(k);
+      } else if (sel.build.type === 'town') {
+        const actions = sel.build.level === 1
+          ? ['town', 'city']
+          : ['city', 'city_new'];
+        for (const action of actions) {
+          for (const k of game.buildTargets(prov, action)) {
+            claim(k, prov.id, action);
+            renderer.highlightBuild.add(k);
+          }
         }
-      } else if (sel.build.type === 'upgrade') {
-        for (const k of game.buildTargets(prov, 'city')) {
-          claim(k, prov.id, 'city');
-          renderer.highlightBuild.add(k);
-        }
-        for (const k of game.buildTargets(prov, 'tower2')) {
-          claim(k, prov.id, 'tower2');
-          renderer.highlightBuild.add(k);
+      } else if (sel.build.type === 'tower') {
+        const actions = sel.build.level === 1
+          ? ['tower', 'tower2']
+          : ['tower2', 'bastion'];
+        for (const action of actions) {
+          for (const k of game.buildTargets(prov, action)) {
+            claim(k, prov.id, action);
+            renderer.highlightBuild.add(k);
+          }
         }
       }
     }
@@ -442,17 +450,33 @@ function endCheck() {
   else if (!game.players[HUMAN - 1].alive) gameOver(false);
 }
 
-function setBuildMode(mode) {
+function cycleBuildCategory(type) {
   if (!humanCanAct()) { Audio2.error(); return; }
-  if (sel.build && JSON.stringify(sel.build) === JSON.stringify(mode)) {
-    sel.build = null; // toggle off
+  const max = type === 'unit' ? 4 : 2;
+  if (sel.build && sel.build.type === type) {
+    if (sel.build.level >= max) sel.build = null;
+    else sel.build.level++;
   } else {
-    sel.build = mode;
+    sel.build = { type, level: 1 };
     sel.unitKey = null;
-    Audio2.select();
   }
+  if (sel.build) Audio2.select();
   refreshHighlights();
   updateHud();
+}
+
+function buildCategoryDisplay(type) {
+  const active = sel.build?.type === type;
+  const lv = active ? sel.build.level : 1;
+  if (type === 'unit') return { sprite: 'unit' + lv, cost: RULES.UNIT_COST[lv] };
+  if (type === 'town') {
+    return lv === 1
+      ? { sprite: 'town', cost: RULES.COST_TOWN }
+      : { sprite: 'city', cost: RULES.COST_CITY_NEW };
+  }
+  return lv === 1
+    ? { sprite: 'tower1', cost: RULES.COST_TOWER }
+    : { sprite: 'tower2', cost: RULES.COST_BASTION };
 }
 
 function endTurn() {
@@ -688,23 +712,14 @@ function updateHud() {
     panel.classList.add('hidden');
   }
 
-  // buttons: enabled when ANY province can afford it
-  const buttons = [
-    ['btn-u1', { type: 'unit', level: 1 }, RULES.UNIT_COST[1]],
-    ['btn-u2', { type: 'unit', level: 2 }, RULES.UNIT_COST[2]],
-    ['btn-u3', { type: 'unit', level: 3 }, RULES.UNIT_COST[3]],
-    ['btn-u4', { type: 'unit', level: 4 }, RULES.UNIT_COST[4]],
-    ['btn-town', { type: 'town' }, RULES.COST_TOWN],
-    ['btn-tower', { type: 'tower' }, RULES.COST_TOWER],
-    ['btn-upgrade', { type: 'upgrade' }, RULES.COST_CITY_UPGRADE],
-  ];
-  for (const [id, mode, cost] of buttons) {
+  // build buttons: tap to cycle level; enabled when any province can afford a placement
+  for (const [id, type] of [['btn-army', 'unit'], ['btn-town', 'town'], ['btn-tower', 'tower']]) {
     const el = $(id);
-    const affordable = humanCanAct() && myProvs.some(pr => pr.money >= cost);
-    el.disabled = !affordable;
-    el.classList.toggle('active', !!sel.build &&
-      JSON.stringify(sel.build) === JSON.stringify(mode));
+    if (!el) continue;
+    el.disabled = !humanCanAct();
+    el.classList.toggle('active', sel.build?.type === type);
   }
+  paintBuildButtons();
   $('btn-undo').disabled = !humanCanAct() || game.undoStack.length === 0;
   $('btn-end').disabled = !humanCanAct();
 }
@@ -869,13 +884,9 @@ function doUndo() {
 // ============================================================
 //  Buttons
 // ============================================================
-bindClick('btn-u1', () => setBuildMode({ type: 'unit', level: 1 }));
-bindClick('btn-u2', () => setBuildMode({ type: 'unit', level: 2 }));
-bindClick('btn-u3', () => setBuildMode({ type: 'unit', level: 3 }));
-bindClick('btn-u4', () => setBuildMode({ type: 'unit', level: 4 }));
-bindClick('btn-town', () => setBuildMode({ type: 'town' }));
-bindClick('btn-tower', () => setBuildMode({ type: 'tower' }));
-bindClick('btn-upgrade', () => setBuildMode({ type: 'upgrade' }));
+bindClick('btn-army', () => cycleBuildCategory('unit'));
+bindClick('btn-town', () => cycleBuildCategory('town'));
+bindClick('btn-tower', () => cycleBuildCategory('tower'));
 bindClick('btn-undo', doUndo);
 bindClick('btn-end', endTurn);
 bindClick('btn-start', newGame);
@@ -1005,20 +1016,25 @@ bindClick('btn-sfx', () => {
   }
 });
 
-// populate unit button icons from sprites
-function paintButtonIcons() {
-  const map = [
-    ['btn-u1', 'unit1'], ['btn-u2', 'unit2'], ['btn-u3', 'unit3'], ['btn-u4', 'unit4'],
-    ['btn-town', 'town'], ['btn-tower', 'tower1'], ['btn-upgrade', 'city'],
-  ];
-  for (const [id, sprite] of map) {
-    const btn = $(id);
-    if (!btn) continue;
-    const cnv = btn.querySelector('canvas');
-    if (!cnv) continue;
+function paintBuildButton(id, sprite, cost) {
+  const btn = $(id);
+  if (!btn) return;
+  const cnv = btn.querySelector('canvas');
+  if (cnv) {
     const g = cnv.getContext('2d');
-    if (!g) continue;
-    g.drawImage(Sprites.get(sprite, 96), 0, 0, cnv.width, cnv.height);
+    if (g) {
+      g.clearRect(0, 0, cnv.width, cnv.height);
+      g.drawImage(Sprites.get(sprite, 96), 0, 0, cnv.width, cnv.height);
+    }
+  }
+  const costEl = btn.querySelector('.cost');
+  if (costEl) costEl.textContent = cost;
+}
+
+function paintBuildButtons() {
+  for (const [id, type] of [['btn-army', 'unit'], ['btn-town', 'town'], ['btn-tower', 'tower']]) {
+    const { sprite, cost } = buildCategoryDisplay(type);
+    paintBuildButton(id, sprite, cost);
   }
 }
 
@@ -1040,7 +1056,7 @@ function setupNativeLifecycle() {
 }
 
 function boot() {
-  try { paintButtonIcons(); } catch (err) { console.error('paintButtonIcons failed', err); }
+  try { paintBuildButtons(); } catch (err) { console.error('paintBuildButtons failed', err); }
   populateCustomMaps();
   updateMainMenu();
   showMenu();
@@ -1053,11 +1069,16 @@ function boot() {
 //  Boot
 // ============================================================
 function loop(now) {
-  if (MapEditor.active) {
-    MapEditor.draw(now);
-  } else if (renderer && game) {
-    drainEvents();
-    renderer.draw(now);
+  try {
+    if (MapEditor.active) {
+      MapEditor.draw(now);
+    } else if (renderer && game) {
+      drainEvents();
+      renderer.draw(now);
+    }
+  } catch (err) {
+    console.error('render loop error', err);
+    if (MapEditor.active) MapEditor.close();
   }
   requestAnimationFrame(loop);
 }

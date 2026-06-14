@@ -163,7 +163,8 @@ class Renderer {
     if (t.kind === 'mountain') return MOUNTAIN_COLOR;
     if (t.strait && !t.owner) return STRAIT_COLOR;
     if (!t.owner) return NEUTRAL_COLOR;
-    return this.game.players[t.owner - 1].color;
+    const p = this.game.players[t.owner - 1];
+    return (p && p.color) || NEUTRAL_COLOR;
   }
 
   hexPath(ctx, x, y, s) {
