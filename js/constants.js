@@ -2,7 +2,8 @@
 
 // ---- Game rule constants (synthesized from Gemini Hex + HexStrategyGame2) ----
 const RULES = {
-  MOVE_RANGE: 4,
+  // Max steps through own province per unit level (L1 militia .. L4 champion)
+  UNIT_MOVE_RANGE: [0, 4, 4, 3, 2],
 
   // Cumulative purchase cost for unit levels 1..4
   UNIT_COST: [0, 3, 8, 18, 33],
@@ -14,11 +15,11 @@ const RULES = {
   COST_CITY_NEW: 15,
   COST_TOWER: 15,
   COST_TOWER_UPGRADE: 10,
-  COST_BASTION: 35,
+  COST_BASTION: 25,
   TOWER_UPKEEP: [0, 5, 15],
 
   // Income by hex kind (a hex with a tree produces 0)
-  INCOME: { plain: 1, town: 3, city: 6, capital: 5, tower: 0 },
+  INCOME: { plain: 1, town: 2, city: 4, capital: 3, tower: 0 },
 
   // Static defense by hex kind (towers use TOWER_DEF by level).
   // Capture needs unit level >= defense + 1 (Champion lv4 breaks bastions).
@@ -31,7 +32,7 @@ const RULES = {
   TREE_SPAWN_CHANCE: 0.002,   // per empty neutral hex per round
   TREE_MAX_FRACTION: 0.22,    // max fraction of land covered by trees
 
-  START_MONEY: { easy: 18, normal: 12, hard: 8 },
+  START_MONEY: { easy: 10, normal: 5, hard: 0 },
 };
 
 const UNIT_NAMES = ['', 'Militia', 'Spearman', 'Knight', 'Champion'];

@@ -48,7 +48,7 @@ class Game {
     this._provSeq = 1;
     this.recomputeProvinces();
 
-    const startMoney = RULES.START_MONEY[opts.difficulty] ?? 12;
+    const startMoney = RULES.START_MONEY[opts.difficulty] ?? 5;
     for (const p of this.provinces.values()) {
       this.tiles.get(p.capitalKey).money = startMoney;
     }
@@ -214,7 +214,7 @@ class Game {
   }
 
   // ---------- movement ----------
-  // BFS through own province up to MOVE_RANGE; returns
+  // BFS through own province up to unit move range; returns
   // { moves:Set<key>, attacks:Map<key, required> }
   legalMoves(fromKey) {
     const res = { moves: new Set(), attacks: new Map() };
@@ -223,6 +223,7 @@ class Game {
     const provId = this.tileProv.get(fromKey);
     if (provId === undefined) return res;
     const lvl = from.unit.level;
+    const maxRange = RULES.UNIT_MOVE_RANGE[lvl] ?? 4;
 
     const dist = new Map([[fromKey, 0]]);
     const queue = [fromKey];
@@ -245,7 +246,7 @@ class Game {
         const nt = this.tiles.get(nk);
         if (!nt || nt.kind === 'mountain') continue;
         if (nt.owner === from.owner) {
-          if (this.tileProv.get(nk) === provId && d < RULES.MOVE_RANGE && !dist.has(nk)) {
+          if (this.tileProv.get(nk) === provId && d < maxRange && !dist.has(nk)) {
             dist.set(nk, d + 1);
             queue.push(nk);
           }
