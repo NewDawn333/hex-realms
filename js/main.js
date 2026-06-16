@@ -506,36 +506,39 @@ function maybeRunAI() {
   if (!game || game.winner || replay.active || isPauseVisible()) return;
   if (!game.currentPlayer.isAI) { updateHud(); return; }
   const diff = game.opts.difficulty;
-  const stepDelay = game.tiles.size > 200 ? 90 : 150;
-  let actionsThisTurn = 0;
+  const betweenTurns = game.tiles.size > 200 ? 120 : 200;
 
-  const step = () => {
-    if (!game || game.winner) { endCheck(); return; }
+  const runAITurn = () => {
+    if (!game || game.winner || isPauseVisible()) { endCheck(); return; }
     if (!game.currentPlayer.isAI) { updateHud(); return; }
-    const acted = AI.act(game, diff);
-    drainEvents();
+
     updateHud();
-    if (game.winner) { endCheck(); return; }
-    if (acted) {
-      // adaptive pacing: first moves are watchable, long turns fast-forward
-      actionsThisTurn++;
-      const delay = actionsThisTurn > 40 ? 0 : actionsThisTurn > 12 ? 35 : stepDelay;
-      aiTimer = setTimeout(step, delay);
+    const pid = game.currentPlayer.id;
+    game.batchRecording = true;
+    let guard = 0;
+    while (game.currentPlayer.isAI && game.currentPlayer.id === pid && guard++ < 600) {
+      if (!AI.act(game, diff)) break;
+    }
+    game.batchRecording = false;
+    game.events.length = 0;
+
+    if (game.winner) { endCheck(); updateHud(); return; }
+    game.endTurn();
+    game.events.length = 0;
+    drainEvents({ fx: false });
+    updateHud();
+    autosave();
+    endCheck();
+    if (game.winner) return;
+
+    if (game.currentPlayer.isAI) {
+      aiTimer = setTimeout(runAITurn, betweenTurns);
     } else {
-      actionsThisTurn = 0;
-      game.endTurn();
-      drainEvents();
+      Audio2.turn();
       updateHud();
-      if (game.winner || !game.players[HUMAN - 1].alive) { endCheck(); return; }
-      if (game.currentPlayer.isAI) {
-        aiTimer = setTimeout(step, 320);
-      } else {
-        Audio2.turn();
-        updateHud();
-      }
     }
   };
-  aiTimer = setTimeout(step, 380);
+  aiTimer = setTimeout(runAITurn, betweenTurns);
 }
 
 // ============================================================
@@ -556,6 +559,22 @@ function stopReplay() {
   $('replay-play').textContent = '▶';
 }
 
+function turnReplayFrames(tape) {
+  if (!tape || tape.length < 2) return tape || [];
+  const frames = [];
+  for (let i = 0; i < tape.length; i++) {
+    const f = tape[i];
+    if (i === 0 || f.label === 'Turn' || f.label === 'Game over') frames.push(f);
+  }
+  const last = tape[tape.length - 1];
+  if (frames[frames.length - 1] !== last) {
+    try {
+      if (JSON.parse(last.snapshot).winner) frames.push(last);
+    } catch (_) { /* keep filtered list */ }
+  }
+  return frames.length >= 2 ? frames : tape;
+}
+
 function showReplayFrame(index) {
   const frame = replay.tape[index];
   if (!frame || !game) return;
@@ -563,9 +582,8 @@ function showReplayFrame(index) {
   game.replaying = true;
   game.recording = false;
   game.restore(replay.tape[replay.index].snapshot);
-  game.events = replay.tape[replay.index].events.map(e => ({ ...e }));
+  game.events.length = 0;
   clearSelection();
-  drainEvents();
   updateHud();
 }
 
@@ -577,7 +595,7 @@ function scheduleReplayAdvance() {
     $('replay-play').textContent = '▶';
     return;
   }
-  const delay = Math.max(20, 450 / replay.speed);
+  const delay = Math.max(80, 550 / replay.speed);
   replay.timer = setTimeout(() => {
     showReplayFrame(replay.index + 1);
     scheduleReplayAdvance();
@@ -589,7 +607,7 @@ function startReplay() {
   stopAITimer();
   $('gameover-overlay').classList.add('hidden');
   replay.active = true;
-  replay.tape = completedTape;
+  replay.tape = turnReplayFrames(completedTape);
   replay.index = 0;
   replay.playing = true;
   replay.speed = +$('replay-speed').value || 1;
@@ -618,8 +636,12 @@ function exitReplay() {
 // ============================================================
 //  Events -> fx
 // ============================================================
-function drainEvents() {
+function drainEvents(opts = {}) {
   if (!game || !renderer) return;
+  if (opts.fx === false) {
+    game.events.length = 0;
+    return;
+  }
   let starved = false;
   for (const ev of game.events) {
     switch (ev.type) {
@@ -681,7 +703,9 @@ function updateHud() {
     $('hud-round').textContent = 'Replay · Round ' + (frame?.round ?? game.round);
     const chip = $('hud-player');
     const pname = p ? (p.name || p.color.name) : '';
-    chip.textContent = frame?.label ? frame.label : pname;
+    chip.textContent = frame?.label === 'Turn'
+      ? `${pname} · Round ${frame?.round ?? game.round}`
+      : (frame?.label || pname);
     chip.style.background = p?.color.main ?? '#555';
     $('prov-panel').classList.add('hidden');
     $('replay-progress').textContent = `${replay.index + 1} / ${replay.tape.length}`;

@@ -22,6 +22,7 @@ class Game {
     this.undoStack = [];
     this.recording = true;
     this.replaying = false;
+    this.batchRecording = false;
     this.tape = [];              // replay frames: { snapshot, events, round, playerId }
 
     const seed = opts.seed || ((Math.random() * 1e9) | 0);
@@ -554,6 +555,7 @@ class Game {
   // ---------- undo & replay tape ----------
   recordStep(label) {
     if (!this.recording || this.replaying) return;
+    if (this.batchRecording && !label) return;
     this.tape.push({
       snapshot: this.serialize(),
       events: this.events.map(e => ({ ...e })),

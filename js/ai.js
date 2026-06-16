@@ -1,7 +1,6 @@
 'use strict';
 
-// AI: performs one action per call so the UI can animate between steps.
-// Returns true if it acted, false when it has nothing left to do.
+// AI: one action per call; the UI batches a full turn before updating the map.
 const AI = {
   // value of capturing a tile
   targetValue(game, tile) {

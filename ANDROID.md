@@ -15,69 +15,87 @@ warns, builds/turns tap lightly).
 2. **Android Studio** — install from [developer.android.com/studio](https://developer.android.com/studio).
    During setup, install the Android SDK and accept licenses.
 
-3. **In the project folder**, install dependencies:
+3. **On your Android phone** — **Settings → About phone → tap Build number 7 times**,
+   then **Settings → Developer options → USB debugging** on.
+
+4. **In the project folder**, install dependencies:
 
 ```bash
 cd ~/Desktop/Cursor/hex-realms
 npm install
 ```
 
-4. **Add the Android platform** (first time only):
-
-```bash
-npm run build
-npx cap add android
-npx cap sync android
-```
-
----
-
-## Build & install on your phone
-
-### Option A — USB debugging (fastest for testing)
-
-1. On your Android phone: **Settings → About phone → tap Build number 7 times** to enable Developer options, then **Settings → Developer options → USB debugging** on.
-
-2. Connect the phone to your Mac with USB.
-
-3. Run:
-
-```bash
-cd ~/Desktop/Cursor/hex-realms
-npm run cap:run
-```
-
-Select your device when prompted. Android Studio / Gradle builds the APK and installs it.
-
-### Option B — Android Studio
+5. **Open the Android project in Android Studio** (first time):
 
 ```bash
 cd ~/Desktop/Cursor/hex-realms
 npm run cap:open
 ```
 
-In Android Studio:
+Wait for Gradle sync. If **Run ▶** is missing, set it up once:
 
-1. Wait for Gradle sync to finish.
-2. **Build → Build Bundle(s) / APK(s) → Build APK(s)**  
-   APK path: `android/app/build/outputs/apk/debug/app-debug.apk`
-3. Copy the APK to your phone (AirDrop, email, Google Drive) and open it to install.  
-   You may need **Settings → Install unknown apps** allowed for your file app.
+- Top toolbar → dropdown next to ▶ → **Edit Configurations…**
+- **+** → **Android App** → Module: **app** → OK
+- **View → Tool Windows → Device Manager** — create an emulator or plug in your phone via USB
+
+> Open the **`android`** folder in Android Studio, not the parent `hex-realms` folder.
 
 ---
 
-## After you change the game (Mac ↔ Android stay in sync)
+## Day-to-day loop (change game → phone updates)
 
-Every time you improve the game on Mac, push the same files to Android:
+After editing `js/`, `css/`, or `index.html`:
 
 ```bash
 cd ~/Desktop/Cursor/hex-realms
-# edit js/, css/, index.html as usual — test with Hex Realms.command on Mac
-npm run cap:sync          # copies web files → www/ → android project
-npm run cap:run           # reinstall on phone, OR rebuild APK in Android Studio
+npm run cap:sync
 ```
 
-That is the whole loop: **one codebase**, Mac browser for quick iteration, `cap:sync` + rebuild to refresh the phone.
+Then either:
+
+### A — Android Studio (green ▶)
+
+1. Phone plugged in via USB (or emulator running).
+2. Select your device in the toolbar dropdown.
+3. Click the green **Run ▶** button.
+
+Android Studio rebuilds and installs directly — **no Google Drive, no manual APK**.
+
+### B — Terminal only (same result, one command)
+
+```bash
+cd ~/Desktop/Cursor/hex-realms
+npm run cap:run
+```
+
+This runs `cap:sync` then builds + installs over USB. Pick your phone if prompted.
+
+---
+
+## Why `cap:sync`?
+
+The game code lives in `js/` at the project root. The Android app reads a **copy**
+in `android/app/src/main/assets/public/`. `npm run cap:sync` rebuilds `www/` and
+copies it into the Android project. **Assemble Project** alone only repackages
+whatever is already there — it does not pick up your latest JS changes.
+
+**Always run `cap:sync` before Run ▶ or `cap:run`.**
+
+---
+
+## Manual APK install (fallback only)
+
+If USB debugging isn't working, you can still copy the APK by hand:
+
+1. `npm run cap:sync`
+2. Android Studio → **Build → Assemble Project**
+3. Open the output folder:
+
+```bash
+open ~/Desktop/Cursor/hex-realms/android/app/build/outputs/apk/debug
+```
+
+4. Copy `app-debug.apk` to your phone (Drive, email, etc.) and install.
 
 ---
 
@@ -93,6 +111,7 @@ The debug APK is for personal use. For Google Play you'd run **Build → Generat
 |--------|-----|
 | `npx cap` not found | Run `npm install` in the project folder |
 | Gradle sync failed | Open Android Studio, install suggested SDK packages |
-| Phone not listed | Enable USB debugging; try a different cable |
-| Old version on phone | Run `npm run cap:sync` then rebuild/reinstall |
+| Phone not listed | Enable USB debugging; try a different cable; unlock phone |
+| Old version on phone | Run `npm run cap:sync` then Run ▶ (not just Assemble) |
+| No Run ▶ button | Edit Configurations → + → Android App → module **app** |
 | No vibration | Check phone isn't in silent/DND; haptics only fire on native APK |
