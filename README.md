@@ -61,6 +61,8 @@ Release builds use the same Capacitor project with a signed APK/AAB in Android S
   the Sierra Nevada and coastal ranges.
 - **Europe**: six factions from Iberia to Scandinavia; Alps and Pyrenees;
   Dover and Øresund straits.
+- **World (Lite)**: six macro-continents (Europe, Americas, Africa, Asia,
+  Oceania) linked by ferry straits — cross oceans without ships.
 
 ## How to play
 
