@@ -28,6 +28,7 @@ const COPY = [
   'js/save.js',
   'js/custommaps.js',
   'js/mapeditor.js',
+  'js/charts.js',
 ];
 
 function rm(dir) {

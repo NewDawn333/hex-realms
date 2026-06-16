@@ -318,6 +318,29 @@ html, body {
   margin-top: 8px;
 }
 
+/* ---------- income chart ---------- */
+.chart-panel {
+  max-width: min(520px, 96vw);
+  padding: 20px 22px 22px;
+}
+
+#chart-canvas {
+  display: block;
+  width: 100%;
+  height: min(52vh, 320px);
+  min-height: 200px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chart-caption {
+  text-align: center;
+  font-size: 12px;
+  color: #8ea4bc;
+  margin: 10px 0 14px;
+}
+
 /* ---------- map editor ---------- */
 #editor-bar {
   position: fixed;

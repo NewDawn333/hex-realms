@@ -3,6 +3,7 @@
 let game = null;
 let renderer = null;
 let completedTape = null;
+let completedIncomeHistory = null;
 const HUMAN = 1;
 
 const replay = {
@@ -222,6 +223,10 @@ function handleBackButton() {
     hideEl('editor-save-panel');
     return;
   }
+  if (isChartVisible()) {
+    closeIncomeChart();
+    return;
+  }
   if (replay.active) {
     exitReplay();
     return;
@@ -274,8 +279,57 @@ function finalizeTape() {
   if (!game) return;
   const last = game.tape[game.tape.length - 1];
   const lastWinner = last ? JSON.parse(last.snapshot).winner : null;
-  if (!lastWinner && game.winner) game.recordStep('Game over');
+  if (!lastWinner && game.winner) {
+    game.recordStep('Game over');
+    game.recordIncomeSnapshot('Game over');
+  }
   completedTape = game.tape.slice();
+  completedIncomeHistory = game.incomeHistory.slice();
+}
+
+function isChartVisible() {
+  return !isHidden('chart-overlay');
+}
+
+function incomeHistoryForReplay() {
+  const src = replay.active ? replay.tape : completedTape;
+  if (!src || !src.length) return [];
+  return src.map((f, i) => ({
+    round: f.round,
+    label: f.label,
+    incomes: f.incomes || (game ? game.playerIncomes() : {}),
+    index: i,
+  }));
+}
+
+function refreshIncomeChart() {
+  if (!isChartVisible() || !game) return;
+  const canvas = $('chart-canvas');
+  const caption = $('chart-caption');
+  if (!canvas) return;
+  if (replay.active) {
+    const history = incomeHistoryForReplay();
+    IncomeCharts.drawLine(canvas, game, history, replay.index);
+    if (caption) {
+      const frame = replay.tape[replay.index];
+      caption.textContent = history.length > 1
+        ? `Turn ${replay.index + 1} of ${replay.tape.length} · Round ${frame?.round ?? game.round}`
+        : 'Income tracked at each turn boundary';
+    }
+  } else {
+    IncomeCharts.drawBar(canvas, game);
+    if (caption) caption.textContent = 'Net gold per turn across all provinces (after upkeep)';
+  }
+}
+
+function openIncomeChart() {
+  if (!game || isMainMenuVisible() || MapEditor.active) return;
+  showEl('chart-overlay');
+  requestAnimationFrame(refreshIncomeChart);
+}
+
+function closeIncomeChart() {
+  hideEl('chart-overlay');
 }
 
 function gameOver(victory) {
@@ -440,6 +494,7 @@ function afterAction() {
   drainEvents();
   refreshHighlights();
   updateHud();
+  refreshIncomeChart();
   autosave();
   if (game.winner) endCheck();
 }
@@ -585,6 +640,7 @@ function showReplayFrame(index) {
   game.events.length = 0;
   clearSelection();
   updateHud();
+  refreshIncomeChart();
 }
 
 function scheduleReplayAdvance() {
@@ -630,6 +686,7 @@ function toggleReplayPlay() {
 
 function exitReplay() {
   stopReplay();
+  closeIncomeChart();
   $('gameover-overlay').classList.remove('hidden');
 }
 
@@ -908,6 +965,9 @@ function doUndo() {
 // ============================================================
 //  Buttons
 // ============================================================
+bindClick('btn-charts', openIncomeChart);
+bindClick('replay-charts', openIncomeChart);
+bindClick('chart-close', closeIncomeChart);
 bindClick('btn-army', () => cycleBuildCategory('unit'));
 bindClick('btn-town', () => cycleBuildCategory('town'));
 bindClick('btn-tower', () => cycleBuildCategory('tower'));

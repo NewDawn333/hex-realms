@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE = 'hex-realms-v11';
+const CACHE = 'hex-realms-v12';
 const ASSETS = [
   '.',
   'index.html',
@@ -20,6 +20,7 @@ const ASSETS = [
   'js/haptics.js',
   'js/save.js',
   'js/mapeditor.js',
+  'js/charts.js',
   'js/main.js',
 ];
 

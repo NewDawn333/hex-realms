@@ -27,6 +27,7 @@
       <span id="prov-income" class="pos">+0/turn</span>
     </div>
     <div class="hud-group">
+      <button id="btn-charts" class="icon-btn" title="Income chart">📊</button>
       <button id="btn-music" class="icon-btn" title="Music">♫</button>
       <button id="btn-sfx" class="icon-btn" title="Sound effects">🔊</button>
       <button id="btn-menu" class="icon-btn" title="Menu">☰</button>
@@ -189,6 +190,16 @@
       <input id="replay-speed" type="range" min="0.25" max="4" step="0.25" value="1">
       <span id="replay-speed-val">1×</span>
       <button id="replay-exit" class="text-btn">Exit Replay</button>
+      <button id="replay-charts" class="icon-btn" title="Income chart">📊</button>
+    </div>
+  </div>
+
+  <!-- income chart -->
+  <div id="chart-overlay" class="overlay hidden">
+    <div class="panel chart-panel">
+      <canvas id="chart-canvas"></canvas>
+      <p id="chart-caption" class="chart-caption"></p>
+      <button id="chart-close" class="text-btn primary big">Close</button>
     </div>
   </div>
 
@@ -205,6 +216,7 @@
   <script src="js/haptics.js"></script>
   <script src="js/save.js"></script>
   <script src="js/mapeditor.js"></script>
+  <script src="js/charts.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

@@ -23,6 +23,7 @@ class Game {
     this.recording = true;
     this.replaying = false;
     this.batchRecording = false;
+    this.incomeHistory = [];     // { round, turnIndex, label, incomes }
     this.tape = [];              // replay frames: { snapshot, events, round, playerId }
 
     const seed = opts.seed || ((Math.random() * 1e9) | 0);
@@ -55,6 +56,7 @@ class Game {
     this.refreshProvinceStats();
     this.startTurn();
     this.recordStep('Game start');
+    this.recordIncomeSnapshot('Game start');
   }
 
   // ---------- accessors ----------
@@ -180,6 +182,25 @@ class Game {
       prov.income = income;
       prov.money = this.tiles.get(prov.capitalKey).money || 0;
     }
+  }
+
+  // Net income per turn summed across all provinces for each player.
+  playerIncomes() {
+    const out = {};
+    for (const p of this.players) out[p.id] = 0;
+    for (const prov of this.provinces.values()) {
+      if (prov.owner) out[prov.owner] = (out[prov.owner] || 0) + prov.income;
+    }
+    return out;
+  }
+
+  recordIncomeSnapshot(label) {
+    this.incomeHistory.push({
+      round: this.round,
+      turnIndex: this.turnIndex,
+      label: label || null,
+      incomes: this.playerIncomes(),
+    });
   }
 
   // ---------- defense / capture ----------
@@ -526,6 +547,7 @@ class Game {
     }
     this.startTurn();
     this.recordStep('Turn');
+    this.recordIncomeSnapshot('Turn');
   }
 
   // Trees slowly spread — the dynamic pressure that keeps maps alive
@@ -557,6 +579,7 @@ class Game {
   recordStep(label) {
     if (!this.recording || this.replaying) return;
     if (this.batchRecording && !label) return;
+    const incomes = this.playerIncomes();
     this.tape.push({
       snapshot: this.serialize(),
       events: this.events.map(e => ({ ...e })),
@@ -564,6 +587,7 @@ class Game {
       round: this.round,
       turnIndex: this.turnIndex,
       playerId: this.currentPlayer?.id ?? 0,
+      incomes,
     });
   }
 
