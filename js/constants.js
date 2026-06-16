@@ -32,6 +32,10 @@ const RULES = {
   TREE_SPAWN_CHANCE: 0.002,   // per empty neutral hex per round
   TREE_MAX_FRACTION: 0.22,    // max fraction of land covered by trees
 
+  PERF_LARGE_MAP: 500,   // tile count: culling + reduced FX
+  PERF_HUGE_MAP: 750,    // tile count: minimal FX + idle throttle
+  PERF_IDLE_REDRAW_MS: 220,
+
   START_MONEY: { easy: 10, normal: 5, hard: 0 },
 };
 

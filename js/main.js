@@ -363,6 +363,10 @@ function clearSelection() {
   }
 }
 
+function markRenderDirty() {
+  if (renderer) renderer.markDirty();
+}
+
 // Build modes work across ALL of the player's provinces at once; each
 // candidate hex remembers which province pays (richest wins conflicts).
 function refreshHighlights() {
@@ -414,6 +418,7 @@ function refreshHighlights() {
     for (const k of lm.moves) renderer.highlightMoves.add(k);
     for (const k of lm.attacks.keys()) renderer.highlightAttacks.add(k);
   }
+  markRenderDirty();
 }
 
 function humanCanAct() {
@@ -582,6 +587,7 @@ function maybeRunAI() {
     game.events.length = 0;
     drainEvents({ fx: false });
     updateHud();
+    markRenderDirty();
     autosave();
     endCheck();
     if (game.winner) return;
@@ -641,6 +647,7 @@ function showReplayFrame(index) {
   clearSelection();
   updateHud();
   refreshIncomeChart();
+  markRenderDirty();
 }
 
 function scheduleReplayAdvance() {
@@ -890,6 +897,8 @@ canvas.addEventListener('pointermove', (e) => {
     cam.y = pinchStart.world.y - (mid.y - canvas.clientHeight / 2) / scale;
     moved = true;
     clearTimeout(holdTimer);
+    r.interacting = true;
+    r.markDirty();
   } else if (panStart) {
     const dx = e.clientX - panStart.x, dy = e.clientY - panStart.y;
     if (Math.hypot(dx, dy) > 6) {
@@ -899,12 +908,16 @@ canvas.addEventListener('pointermove', (e) => {
     if (moved) {
       cam.x = panStart.camX - dx / cam.scale;
       cam.y = panStart.camY - dy / cam.scale;
+      r.interacting = true;
+      r.markDirty();
     }
   }
 });
 
 function pointerEnd(e) {
   clearTimeout(holdTimer);
+  const r = activeRendererRef();
+  if (r) r.interacting = false;
   if (pointers.has(e.pointerId)) {
     pointers.delete(e.pointerId);
     if (!moved && pointers.size === 0) {
@@ -924,6 +937,7 @@ function pointerEnd(e) {
       panStart = null;
     }
   }
+  markRenderDirty();
 }
 canvas.addEventListener('pointerup', pointerEnd);
 canvas.addEventListener('pointercancel', pointerEnd);
@@ -940,6 +954,7 @@ canvas.addEventListener('wheel', (e) => {
   const after = r.screenToWorld(mx, my);
   cam.x += before.x - after.x;
   cam.y += before.y - after.y;
+  r.markDirty();
 }, { passive: false });
 
 window.addEventListener('keydown', (e) => {
@@ -1156,9 +1171,9 @@ function loop(now) {
   try {
     if (MapEditor.active) {
       MapEditor.draw(now);
-    } else if (renderer && game) {
-      drainEvents();
+    } else if (renderer && game && (replay.active || renderer.shouldRedraw(now))) {
       renderer.draw(now);
+      renderer.dirty = false;
     }
   } catch (err) {
     console.error('render loop error', err);

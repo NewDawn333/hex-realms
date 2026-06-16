@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE = 'hex-realms-v12';
+const CACHE = 'hex-realms-v13';
 const ASSETS = [
   '.',
   'index.html',
