@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a3550"/>
+      <stop offset="100%" stop-color="#14283a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="500" fill="url(#sky)"/>
+  <g opacity="0.12" fill="none" stroke="#6fb3e8" stroke-width="2">
+    <polygon points="120,180 155,200 155,240 120,260 85,240 85,200"/>
+    <polygon points="900,120 935,140 935,180 900,200 865,180 865,140"/>
+    <polygon points="860,320 895,340 895,380 860,400 825,380 825,340"/>
+    <polygon points="180,340 215,360 215,400 180,420 145,400 145,360"/>
+  </g>
+  <g transform="translate(140 90) scale(2.4)">
+    <polygon points="50,12 80,29 80,63 50,80 20,63 20,29" fill="#3f8fd2" stroke="#6fb3e8" stroke-width="2"/>
+    <polygon points="50,26 68,36 68,56 50,66 32,56 32,36" fill="#53a85e" stroke="#82c98b" stroke-width="1.5"/>
+    <rect x="44" y="40" width="12" height="16" fill="#e8d9b8"/>
+    <polygon points="40,42 50,32 60,42" fill="#c0563f"/>
+  </g>
+  <text x="360" y="200" fill="#ffffff" font-family="system-ui,sans-serif" font-size="72" font-weight="700">Hex Realms</text>
+  <text x="362" y="265" fill="#a8c4dc" font-family="system-ui,sans-serif" font-size="34">Conquer provinces. Rule the hex grid.</text>
+  <text x="362" y="330" fill="#6fb3e8" font-family="system-ui,sans-serif" font-size="26">Offline turn-based strategy</text>
+  <g transform="translate(362 370)">
+    <rect x="0" y="0" width="140" height="44" rx="10" fill="#234a6a"/>
+    <text x="70" y="28" fill="#e8eef4" font-family="system-ui,sans-serif" font-size="18" text-anchor="middle">UK / Europe / CA</text>
+    <rect x="155" y="0" width="120" height="44" rx="10" fill="#234a6a"/>
+    <text x="215" y="28" fill="#e8eef4" font-family="system-ui,sans-serif" font-size="18" text-anchor="middle">Map editor</text>
+    <rect x="290" y="0" width="110" height="44" rx="10" fill="#234a6a"/>
+    <text x="345" y="28" fill="#e8eef4" font-family="system-ui,sans-serif" font-size="18" text-anchor="middle">No ads</text>
+  </g>
+</svg>

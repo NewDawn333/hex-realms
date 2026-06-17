@@ -1,11 +1,12 @@
 'use strict';
 
-const CACHE = 'hex-realms-v16';
+const CACHE = 'hex-realms-v17';
 const ASSETS = [
   '.',
   'index.html',
   'manifest.json',
   'icon.svg',
+  'privacy.html',
   'css/style.css',
   'js/constants.js',
   'js/hex.js',

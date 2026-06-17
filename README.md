@@ -51,6 +51,14 @@ If you're testing changes before they're pushed:
 ### Future: Play Store
 
 Release builds use the same Capacitor project with a signed APK/AAB in Android Studio.
+Store copy, graphics, and privacy policy are in **[play-store/](play-store/)**.
+Privacy policy: **https://newdawn333.github.io/hex-realms/privacy.html**
+
+Regenerate Play Store PNGs and Android launcher mipmaps from `icon.svg`:
+
+```bash
+npm run store:assets
+```
 
 ## Maps
 

@@ -12,6 +12,7 @@ const COPY = [
   'index.html',
   'manifest.json',
   'icon.svg',
+  'privacy.html',
   'sw.js',
   'css',
   'js/constants.js',
