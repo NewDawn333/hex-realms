@@ -2,7 +2,7 @@
   "name": "hex-realms",
   "version": "1.1.0",
   "private": true,
-  "description": "Turn-based hex strategy game inspired by Antiyoy",
+  "description": "Turn-based hex strategy — provinces, economy, and AI rivals",
   "scripts": {
     "build": "node scripts/build-www.js",
     "cap:sync": "npm run build && npx cap sync android",

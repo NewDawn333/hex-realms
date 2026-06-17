@@ -67,9 +67,8 @@ const Audio2 = {
 
   stopAll() {
     this.stopMusic();
-    if (this.ctx && this.ctx.state === 'running') {
-      this.ctx.suspend().catch(() => {});
-    }
+    if (!this.ctx) return;
+    this.ctx.suspend().catch(() => {});
   },
 
   resumeAll() {

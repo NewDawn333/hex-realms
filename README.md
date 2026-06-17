@@ -1,7 +1,8 @@
 # ⬡ Hex Realms
 
-A turn-based hex strategy game inspired by Antiyoy. Conquer the island,
-province by province. Pure HTML5/JavaScript — no build step, no dependencies.
+A turn-based hex strategy game — conquer provinces, manage treasuries, and
+outmaneuver AI rivals. Original artwork and rules; runs in the browser or as
+an offline Android app.
 
 ## Play on your Mac
 
@@ -53,40 +54,46 @@ Release builds use the same Capacitor project with a signed APK/AAB in Android S
 
 ## Maps
 
-- **Random Island** (small → huge): organic generation with peninsulas,
-  bays and impassable mountain ridges. Pick 1–5 AI opponents.
+- **Random Island** (small → gigantic): organic generation with peninsulas,
+  bays and impassable mountain ridges. Pick 1–7 AI opponents.
 - **United Kingdom**: English, Scots, Welsh and Irish factions; Highlands,
   Pennines and Cambrian mountains; sea-strait ferry crossings to Ireland.
 - **California**: Bay Area, Angelenos, Valley Folk and San Diegans, with
   the Sierra Nevada and coastal ranges.
 - **Europe**: six factions from Iberia to Scandinavia; Alps and Pyrenees;
   Dover and Øresund straits.
-- **World (Lite)**: six macro-continents (Europe, Americas, Africa, Asia,
-  Oceania) linked by ferry straits — cross oceans without ships.
+- **Custom maps**: built in the map editor (land, mountains, forests, straits).
 
 ## How to play
 
-- **Build anywhere**: tap a buy button, then tap any highlighted hex —
-  no need to select a province first. Each placement is paid by the
-  province it belongs to (richest claims contested border hexes).
-- **Provinces**: each connected blob of your color is a province with its own
-  treasury (shown on its capital). Tap any of your tiles to inspect it.
-- **Terrain**: mountains are impassable. Blue strait hexes are sea
-  crossings — armies can ferry across but they produce no income.
-- **Income**: every tile pays 1 gold/turn, towns 3, cities 6, capitals 5.
-  Trees block a tile's income — chop them by moving a soldier onto them (+3 gold).
-- **Soldiers** (Militia 3g → Spearman 8g → Knight 18g → Champion 33g): tap a
-  soldier, then a highlighted hex. They move up to 4 hexes through your own
-  province and capture adjacent enemy/neutral tiles. Move two soldiers together
-  to merge them into a stronger one.
-- **Combat**: to capture a tile you must beat its protection — towers, capitals,
-  towns and nearby enemy soldiers all project defense. Champions break any siege.
-- **Upkeep**: soldiers cost 2/5/12/25 gold per turn. If a province's treasury
-  goes negative, its whole army starves.
-- **Strategy**: cut an enemy province in two and the halves split their gold and
-  may lose units. Eliminate every rival realm to win.
+- **Build**: tap **Army**, **Town**, or **Tower**, then tap again to cycle
+  level (stronger units, city, bastion). Tap a highlighted hex to place.
+  Placing on the same type upgrades it (town → city, tower → bastion).
+- **Provinces**: each connected blob of your color has its own treasury
+  (shown on its capital). Tap any of your tiles to inspect it.
+- **Terrain**: mountains are impassable. Blue strait hexes are ferry
+  crossings — armies can cross but cannot be owned or built on.
+- **Income** (per turn): plain 1, town 2, city 4, capital 3. Trees block
+  income — chop them by moving a soldier onto them (+3 gold).
+- **Build costs**: town 5g, new city 15g (or upgrade town 10g), tower 15g,
+  bastion 25g.
+- **Soldiers**: Militia 3g, Spearman 8g, Knight 18g, Champion 33g. Move
+  range through your province: 4 / 4 / 3 / 2 hexes. Merge units to promote.
+- **Upkeep**: 2 / 5 / 12 / 25 gold per turn by rank. If a province treasury
+  goes negative at turn start, its whole army starves.
+- **Starting gold**: Easy 10g, Normal 5g, Hard 0g.
+- **Combat**: capture strength must beat tile defense (towns, towers,
+  capitals, nearby enemies). Champions break any siege.
+- **Win**: eliminate every rival capital. Cut enemy provinces in two to
+  split their economy.
+
+**Hold** on one of your hexes to rally unmoved units toward it.
 
 Keyboard shortcuts: `Enter` = end turn, `Esc` = cancel, `Cmd+Z` = undo.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
 
 ## Project layout
 
@@ -96,6 +103,9 @@ css/style.css     UI styling
 js/constants.js   tunable game rules (costs, income, upkeep…)
 js/hex.js         hex-grid math, seeded RNG
 js/mapgen.js      organic island generation
+js/realmaps.js    UK, California, Europe scenarios
+js/custommaps.js  player-made maps (localStorage)
+js/mapeditor.js   terrain editor
 js/game.js        rules engine (provinces, combat, economy, undo)
 js/sprites.js     vector artwork (castles, towns, towers, soldiers…)
 js/renderer.js    canvas renderer, camera, animations

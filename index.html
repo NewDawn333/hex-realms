@@ -64,7 +64,6 @@
           <option value="uk">United Kingdom</option>
           <option value="california">California</option>
           <option value="europe">Europe</option>
-          <option value="world">World (Lite)</option>
         </select>
       </div>
       <div class="opt-row" id="row-size">
@@ -109,9 +108,11 @@
           <li>Tap a soldier, then a highlighted hex to <b>move</b> it. Merge soldiers to promote them.</li>
           <li>Each connected blob of your color is a <b>province</b> with its own treasury (shown on its capital). Tap a tile to inspect one.</li>
           <li>Stronger units beat weaker ones; towers and capitals protect their neighbors. Champions break any defense.</li>
-          <li>Soldiers cost upkeep every turn — if a province goes bankrupt, its army starves!</li>
-          <li>Towns and cities boost income. Chop trees for quick gold before they spread.</li>
-          <li>Mountains are impassable. Blue strait hexes are sea crossings — armies can ferry over them.</li>
+          <li>Soldiers cost upkeep (2 / 5 / 12 / 25 gold per turn by rank) — if a province goes bankrupt, its army starves!</li>
+          <li>Income: plain 1, town 2, city 4, capital 3 gold/turn. Town 5g, city 15g (or upgrade town 10g), tower 15g, bastion 25g. Chop trees for +3 gold.</li>
+          <li>Units: Militia 3g, Spearman 8g, Knight 18g, Champion 33g. Move range 4 / 4 / 3 / 2 hexes through your province.</li>
+          <li>Starting treasury: Easy 10g, Normal 5g, Hard 0g.</li>
+          <li>Mountains are impassable. Blue strait hexes are ferry crossings — armies can cross but cannot own or build on them.</li>
           <li>Cut an enemy province in two to cripple it. Take every capital to win.</li>
           <li><b>Hold</b> on one of your hexes to rally all unmoved units toward it.</li>
         </ul>
@@ -123,7 +124,7 @@
   <div id="editor-menu-overlay" class="overlay hidden">
     <div class="panel">
       <h2>Map Editor</h2>
-      <p class="tagline">Paint terrain only — player starts are assigned when you play.</p>
+      <p class="tagline">Paint terrain — use Strait for ferry crossings (traversable, not ownable).</p>
       <button id="editor-new-blank" class="text-btn primary big">Blank Map</button>
       <button id="editor-new-full" class="text-btn big">Full Hex Grid</button>
       <div id="editor-saved-list" class="editor-saved-list"></div>
@@ -138,6 +139,7 @@
       <button id="ed-erase" class="text-btn ed-tool" data-tool="erase">Erase</button>
       <button id="ed-mountain" class="text-btn ed-tool" data-tool="mountain">Mountain</button>
       <button id="ed-forest" class="text-btn ed-tool" data-tool="forest">Forest</button>
+      <button id="ed-strait" class="text-btn ed-tool" data-tool="strait">Strait</button>
       <span class="divider"></span>
       <button id="editor-save-btn" class="text-btn primary">Save</button>
       <button id="editor-exit-btn" class="text-btn">Exit</button>

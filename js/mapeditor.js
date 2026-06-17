@@ -1,6 +1,6 @@
 'use strict';
 
-// Hex map editor — paint terrain only (land, erase, mountain, forest).
+// Hex map editor — paint terrain (land, erase, mountain, forest, strait).
 const MapEditor = {
   active: false,
   cells: new Map(),   // key -> { q, r, ch }
@@ -17,6 +17,7 @@ const MapEditor = {
     ['erase', 'Erase'],
     ['mountain', 'Mountain'],
     ['forest', 'Forest'],
+    ['strait', 'Strait'],
   ],
 
   open(mode, existingId) {
@@ -138,6 +139,7 @@ const MapEditor = {
     const cell = this.cells.get(key);
     if (this.tool === 'mountain') cell.ch = '^';
     else if (this.tool === 'forest') cell.ch = 'T';
+    else if (this.tool === 'strait') cell.ch = '=';
     this._syncPreview();
   },
 
@@ -147,6 +149,7 @@ const MapEditor = {
       tree: false, strait: false, unit: null, money: 0,
     };
     if (c.ch === '^') tile.kind = 'mountain';
+    else if (c.ch === '=') tile.strait = true;
     else if (c.ch === 'T' || c.ch === 't') tile.tree = true;
     return tile;
   },

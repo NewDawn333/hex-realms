@@ -32,6 +32,7 @@ const SaveGame = window.SaveGame || {
   clear() {},
 };
 let appReady = false;
+let appInBackground = false;
 
 function getHexNative() {
   return window.HexNative || {
@@ -251,14 +252,18 @@ function handleBackButton() {
 }
 
 function onAppBackground() {
-  if (!appReady) return;
-  if (isInActiveGame() || isPauseVisible()) autosave();
+  appInBackground = true;
   stopAITimer();
   Audio2.stopAll();
+  if (!appReady) return;
+  if (isInActiveGame() || isPauseVisible()) autosave();
 }
 
 function onAppForeground() {
+  appInBackground = false;
+  if (!appReady) return;
   Audio2.resumeAll();
+  markRenderDirty();
   if (isInActiveGame() && !isPauseVisible()) maybeRunAI();
 }
 
@@ -1146,12 +1151,11 @@ function setupNativeLifecycle() {
     if (e && e.preventDefault) e.preventDefault();
     handleBackButton();
   }, false);
-  if (!native.isNative()) {
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) onAppBackground();
-      else onAppForeground();
-    });
-  }
+  // WebView visibility is reliable on Android when Home is pressed.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) onAppBackground();
+    else onAppForeground();
+  });
 }
 
 function boot() {
@@ -1171,7 +1175,8 @@ function loop(now) {
   try {
     if (MapEditor.active) {
       MapEditor.draw(now);
-    } else if (renderer && game && (replay.active || renderer.shouldRedraw(now))) {
+    } else if (renderer && game && !appInBackground &&
+      (replay.active || renderer.shouldRedraw(now))) {
       renderer.draw(now);
       renderer.dirty = false;
     }

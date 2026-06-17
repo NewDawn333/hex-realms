@@ -41,11 +41,17 @@ window.HexNative = {
   onPause(cb) {
     if (!isNative()) return;
     App.addListener('pause', cb);
+    App.addListener('appStateChange', ({ isActive }) => {
+      if (!isActive) cb();
+    });
   },
 
   onResume(cb) {
     if (!isNative()) return;
     App.addListener('resume', cb);
+    App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) cb();
+    });
   },
 
   exitApp() {
